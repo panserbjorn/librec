@@ -70,6 +70,7 @@
 
 	</dependencies>
 	<build>
+	<pluginManagement>
 		<plugins>
 			<plugin>
 				<groupId>org.scala-tools</groupId>
@@ -103,7 +104,7 @@
 					<target>${java.version}</target>
 				</configuration>
 			</plugin>
-
 		</plugins>
+	</pluginManagement>
 	</build>
 </project>
