@@ -30,19 +30,19 @@ public class testingClass {
 
 	/**
 	 * @param args
-	 * @throws LibrecException 
+	 * @throws LibrecException
 	 */
 	public static void main(String[] args) throws LibrecException {
 		System.out.println("Running examples for single recommender systems");
 
 //		The first example uses the movieLens 100-k with a KNN item recommender
-//		firstExample();
+		firstExample();
 //		The second example uses the filmtrust dataset with a KNN item recommender
 //		secondExample();
 //		The third example uses a ranked recommender with the movieLens 100-k with BPR recommender
 //		thirdExample();
 //		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender
-		fourthExample();
+//		fourthExample();
 
 		System.out.println("This should have ended");
 
@@ -53,7 +53,9 @@ public class testingClass {
 		Configuration conf = new Configuration();
 		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
 		Randoms.seed(1);
-		TextDataModel dataModel = new TextDataModel(conf);
+		// TODO Revert this to TextDataModel instead of GroupDataModel once finished
+		// testing
+		GroupDataModel dataModel = new GroupDataModel(conf);
 		dataModel.buildDataModel();
 
 		// build recommendercontext

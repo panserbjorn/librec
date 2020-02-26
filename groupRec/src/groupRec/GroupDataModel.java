@@ -3,8 +3,12 @@
  */
 package groupRec;
 
+import java.io.IOException;
+
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
+import net.librec.conf.Configured;
+import net.librec.data.convertor.TextDataConvertor;
 import net.librec.data.model.AbstractDataModel;
 import net.librec.math.structure.DataSet;
 
@@ -16,8 +20,12 @@ import net.librec.math.structure.DataSet;
 public class GroupDataModel extends AbstractDataModel {
 	
 
+	/**
+	 * Empty constructor.
+	 */
 	public GroupDataModel() {
 	}
+	
 	
 	public GroupDataModel(Configuration conf) {
 		this.conf = conf;
@@ -25,8 +33,17 @@ public class GroupDataModel extends AbstractDataModel {
 
 	@Override
 	protected void buildConvert() throws LibrecException {
-		// TODO Auto-generated method stub
-		
+		String[] inputDataPath = conf.get(Configured.CONF_DATA_INPUT_PATH).trim().split(":");
+		for (int i = 0; i < inputDataPath.length; i++) {
+		    inputDataPath[i] = conf.get(Configured.CONF_DFS_DATA_DIR) + "/" + inputDataPath[i];
+        }
+        String dataColumnFormat = conf.get(Configured.CONF_DATA_COLUMN_FORMAT, "UIR");
+        dataConvertor = new GroupTextDataConvertor(dataColumnFormat, inputDataPath, conf.get("data.convert.sep","[\t;, ]"));
+        try {
+            dataConvertor.processData();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 	}
 	
     /**
