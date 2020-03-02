@@ -5,6 +5,7 @@ package groupRec;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
+import net.librec.conf.Configuration.Resource;
 import net.librec.data.model.TextDataModel;
 import net.librec.eval.EvalContext;
 import net.librec.eval.RecommenderEvaluator;
@@ -36,9 +37,9 @@ public class testingClass {
 		System.out.println("Running examples for single recommender systems");
 
 //		The first example uses the movieLens 100-k with a KNN item recommender
-		firstExample();
+//		firstExample();
 //		The second example uses the filmtrust dataset with a KNN item recommender
-//		secondExample();
+		secondExample();
 //		The third example uses a ranked recommender with the movieLens 100-k with BPR recommender
 //		thirdExample();
 //		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender
@@ -92,13 +93,14 @@ public class testingClass {
 	static void secondExample() throws LibrecException {
 		// build data model (This step is the configuration of the informations for the
 		// recommender)
-//				Configuration conf = new Configuration(false);
-		Configuration conf = new Configuration();
+		Configuration conf = new Configuration(false);
+//		Configuration conf = new Configuration();
 
 //				// TODO Find out how to do this through the resource (.properties) files instead
 		// of just setting everything manually
-//				Resource resource = new Resource("librec.properties");
-//			    conf.addResource(resource);
+		Resource resource = new Resource("librec.properties");
+		conf.addResource(resource);
+		
 
 		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
 		conf.set("data.input.path", "filmtrust/rating");
