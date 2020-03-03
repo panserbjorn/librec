@@ -16,9 +16,9 @@ public class Cluster {
 	
 	private int id;
 	
-	private List<Number> users;
+	private List<List<Number>> users;
 	
-	private VectorBasedSequentialSparseVector centroid;
+	private List<Number> centroid;
 
 	public int getId() {
 		return id;
@@ -28,30 +28,29 @@ public class Cluster {
 		this.id = id;
 	}
 
-	public List<Number> getUsers() {
+	public List<List<Number>> getUsers() {
 		return users;
 	}
 
-	public void setUsers(List<Number> users) {
+	public void setUsers(List<List<Number>> users) {
 		this.users = users;
 	}
 	
-	public void addUser(Integer newUser) {
+	public void addUser(List<Number> newUser) {
 		this.getUsers().add(newUser);
 	}
 
-	public VectorBasedSequentialSparseVector getCentroid() {
+	public List<Number> getCentroid() {
 		return centroid;
 	}
 
-	public void setCentroid(VectorBasedSequentialSparseVector centroid) {
+	public void setCentroid(List<Number> centroid) {
 		this.centroid = centroid;
 	}
 	
 	public void clear() {
 		this.users.clear();
 	}
-	
-	
+
 
 }
