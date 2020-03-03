@@ -94,13 +94,8 @@ public class testingClass {
 		// build data model (This step is the configuration of the informations for the
 		// recommender)
 		Configuration conf = new Configuration(false);
-//		Configuration conf = new Configuration();
-
-//				// TODO Find out how to do this through the resource (.properties) files instead
-		// of just setting everything manually
 		Resource resource = new Resource("librec.properties");
 		conf.addResource(resource);
-		
 
 		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
 		conf.set("data.input.path", "filmtrust/rating");
@@ -109,6 +104,7 @@ public class testingClass {
 		Randoms.seed(1);
 		TextDataModel dataModel = new TextDataModel(conf);
 		dataModel.buildDataModel();
+		dataModel.getTrainDataSet();
 
 		// build recommendercontext
 		RecommenderContext context = new RecommenderContext(conf, dataModel);
@@ -211,6 +207,43 @@ public class testingClass {
 		// run recommender algorithm
 		recommender.train(context);
 
+		// evaluate the recommended result
+		EvalContext evalContext = new EvalContext(conf, recommender, dataModel.getTestDataSet(),
+				context.getSimilarity().getSimilarityMatrix(), context.getSimilarities());
+		RecommenderEvaluator ndcgEvaluator = new NormalizedDCGEvaluator();
+		ndcgEvaluator.setTopN(10);
+		double ndcgValue = ndcgEvaluator.evaluate(evalContext);
+		System.out.println("ndcg:" + ndcgValue);
+	}
+
+	static void groupExample(String configFile) throws LibrecException {
+		// build data model
+		Configuration conf = new Configuration();
+		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
+		TextDataModel dataModel = new TextDataModel(conf);
+		dataModel.buildDataModel();
+		dataModel.getTrainDataSet();
+
+		// build recommender context
+		RecommenderContext context = new RecommenderContext(conf, dataModel);
+
+		// build similarity
+		RecommenderSimilarity similarity = new CosineSimilarity();
+		similarity.buildSimilarityMatrix(dataModel);
+		context.setSimilarity(similarity);
+
+		// build recommender
+		conf.set("rec.neighbors.knn.number", "200");
+		Recommender recommender = new ItemKNNRecommender();
+		recommender.setContext(context);
+
+		// run recommender algorithm
+		recommender.train(context);
+
+		
+		//TODO Fill the sparce matrix for the ratings of the users
+//		dataModel.getUserMappingData()
+		
 		// evaluate the recommended result
 		EvalContext evalContext = new EvalContext(conf, recommender, dataModel.getTestDataSet(),
 				context.getSimilarity().getSimilarityMatrix(), context.getSimilarities());
