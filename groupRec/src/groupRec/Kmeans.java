@@ -3,9 +3,9 @@
  */
 package groupRec;
 
-import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
@@ -20,6 +20,8 @@ public class Kmeans {
 
 	private int NUM_CLUSTERS = 20;
 
+	// TODO Change this so that it is determined from the DataFrame and/or the
+	// sparce matrix
 	private Number MIN_RATING = 0;
 
 	private Number MAX_RATING = 5;
@@ -53,7 +55,13 @@ public class Kmeans {
 
 	private List<Number> generateRandomCentroid(Number min_RATING2, Number max_RATING2) {
 		// TODO Auto-generated method stub
-		return null;
+		int items = this.sparceMatrix.columnSize();
+		Random rnd = new Random();
+		List<Number> centroid = new ArrayList<Number>(items);
+		for (int i = 0; i < items; i++) {
+			centroid.set(i, rnd.nextDouble()*(max_RATING2.doubleValue()-min_RATING2.doubleValue())+min_RATING2.doubleValue());
+		}
+		return centroid;
 	}
 
 	public void calculate() {
@@ -99,10 +107,10 @@ public class Kmeans {
 				}
 			}
 			for (int i = 0; i < numItems; i++) {
-				newCentroid.set(i, newCentroid.get(i).floatValue()/clusterUsers.size());
+				newCentroid.set(i, newCentroid.get(i).floatValue() / clusterUsers.size());
 			}
 		}
-		
+
 	}
 
 	private List<List<Number>> getCentroids() {
@@ -122,32 +130,35 @@ public class Kmeans {
 	}
 
 	private void assignCluster() {
-        double max = Double.MAX_VALUE;
-        double min = max; 
-        int cluster = 0;                 
-        double distance = 0.0; 
-        
-        int numUsers = this.sparceMatrix.rowSize();
-        
-        for (int i = 0; i < numUsers; i++) {
-        	List<Number> user = transformVectorToList(this.sparceMatrix.row(i));
-        	min = max;
-            for(int j = 0; j < NUM_CLUSTERS; j++) {
-            	Cluster c = clusters.get(j);
-                distance =  1.0 - sim.getSimilarity(user, c.getCentroid());
-                if(distance < min){
-                    min = distance;
-                    cluster = j;
-                }
-            }
-            
-            clusters.get(cluster).addUser(user);
-        }
-    }
+		double max = Double.MAX_VALUE;
+		double min = max;
+		int cluster = 0;
+		double distance = 0.0;
+
+		int numUsers = this.sparceMatrix.rowSize();
+
+		for (int i = 0; i < numUsers; i++) {
+			List<Number> user = transformVectorToList(this.sparceMatrix.row(i));
+			min = max;
+			for (int j = 0; j < NUM_CLUSTERS; j++) {
+				Cluster c = clusters.get(j);
+				distance = 1.0 - sim.getSimilarity(user, c.getCentroid());
+				if (distance < min) {
+					min = distance;
+					cluster = j;
+				}
+			}
+
+			clusters.get(cluster).addUser(user, i);
+		}
+	}
 
 	private List<Number> transformVectorToList(SequentialSparseVector row) {
-		// TODO Auto-generated method stub
-		return null;
+		List<Number> ratings = new ArrayList<Number>();
+		for (Object rating : row) {
+			ratings.add((Number) rating);
+		}
+		return ratings;
 	}
 
 }
