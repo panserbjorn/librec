@@ -39,11 +39,13 @@ public class testingClass {
 //		The first example uses the movieLens 100-k with a KNN item recommender
 //		firstExample();
 //		The second example uses the filmtrust dataset with a KNN item recommender
-		secondExample();
+//		secondExample();
 //		The third example uses a ranked recommender with the movieLens 100-k with BPR recommender
 //		thirdExample();
-//		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender
+//		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender with NDCG evaluator
 //		fourthExample();
+//		The fifth example uses a ranked recommender with movieLens 100-k and ItemKnn recommender with precision evaluator
+		fifthExample();
 
 		System.out.println("This should have ended");
 
@@ -216,6 +218,43 @@ public class testingClass {
 		System.out.println("ndcg:" + ndcgValue);
 	}
 
+	static void fifthExample() throws LibrecException {
+		// build data model
+		Configuration conf = new Configuration();
+		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
+		TextDataModel dataModel = new TextDataModel(conf);
+		dataModel.buildDataModel();
+
+		// build recommender context
+		RecommenderContext context = new RecommenderContext(conf, dataModel);
+
+		// build similarity
+		conf.set("rec.recommender.similarity.key", "item");
+		conf.setBoolean("rec.recommender.isranking", true);
+		conf.setInt("rec.similarity.shrinkage", 10);
+//		RecommenderSimilarity similarity = new CosineSimilarity();
+		RecommenderSimilarity similarity = new PCCSimilarity();
+		similarity.buildSimilarityMatrix(dataModel);
+		context.setSimilarity(similarity);
+
+		// build recommender
+		conf.set("rec.neighbors.knn.number", "200");
+		Recommender recommender = new ItemKNNRecommender();
+		recommender.setContext(context);
+
+		// run recommender algorithm
+		recommender.train(context);
+
+		// evaluate the recommended result
+		EvalContext evalContext = new EvalContext(conf, recommender, dataModel.getTestDataSet(),
+				context.getSimilarity().getSimilarityMatrix(), context.getSimilarities());
+//		RecommenderEvaluator ndcgEvaluator = new NormalizedDCGEvaluator();
+		RecommenderEvaluator precisionEvaluator = new PrecisionEvaluator();
+		precisionEvaluator.setTopN(10);
+		double precision = precisionEvaluator.evaluate(evalContext);
+		System.out.println("precision:" + precision);
+	}
+
 	static void groupExample(String configFile) throws LibrecException {
 		// build data model
 		Configuration conf = new Configuration();
@@ -240,10 +279,9 @@ public class testingClass {
 		// run recommender algorithm
 		recommender.train(context);
 
-		
-		//TODO Fill the sparce matrix for the ratings of the users
+		// TODO Fill the sparce matrix for the ratings of the users
 //		dataModel.getUserMappingData()
-		
+
 		// evaluate the recommended result
 		EvalContext evalContext = new EvalContext(conf, recommender, dataModel.getTestDataSet(),
 				context.getSimilarity().getSimilarityMatrix(), context.getSimilarities());

@@ -54,7 +54,6 @@ public class Kmeans {
 	}
 
 	private List<Number> generateRandomCentroid(Number min_RATING2, Number max_RATING2) {
-		// TODO Auto-generated method stub
 		int items = this.sparceMatrix.columnSize();
 		Random rnd = new Random();
 		List<Number> centroid = new ArrayList<Number>(items);
