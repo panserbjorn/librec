@@ -6,6 +6,7 @@ package groupRec;
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configuration.Resource;
+import net.librec.data.DataModel;
 import net.librec.data.model.TextDataModel;
 import net.librec.eval.EvalContext;
 import net.librec.eval.RecommenderEvaluator;
@@ -37,7 +38,7 @@ public class testingClass {
 		System.out.println("Running examples for single recommender systems");
 
 //		The first example uses the movieLens 100-k with a KNN item recommender
-//		firstExample();
+		firstExample();
 //		The second example uses the filmtrust dataset with a KNN item recommender
 //		secondExample();
 //		The third example uses a ranked recommender with the movieLens 100-k with BPR recommender
@@ -45,7 +46,7 @@ public class testingClass {
 //		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender with NDCG evaluator
 //		fourthExample();
 //		The fifth example uses a ranked recommender with movieLens 100-k and ItemKnn recommender with precision evaluator
-		fifthExample();
+//		fifthExample();
 
 		System.out.println("This should have ended");
 
@@ -58,7 +59,7 @@ public class testingClass {
 		Randoms.seed(1);
 		// TODO Revert this to TextDataModel instead of GroupDataModel once finished
 		// testing
-		GroupDataModel dataModel = new GroupDataModel(conf);
+		DataModel dataModel = new TextDataModel(conf);
 		dataModel.buildDataModel();
 
 		// build recommendercontext
