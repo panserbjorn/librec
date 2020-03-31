@@ -38,9 +38,9 @@ public class testingClass {
 		System.out.println("Running examples for single recommender systems");
 
 //		The first example uses the movieLens 100-k with a KNN item recommender
-		firstExample();
+//		firstExample();
 //		The second example uses the filmtrust dataset with a KNN item recommender
-//		secondExample();
+		secondExample();
 //		The third example uses a ranked recommender with the movieLens 100-k with BPR recommender
 //		thirdExample();
 //		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender with NDCG evaluator
