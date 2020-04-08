@@ -5,6 +5,7 @@ package groupRec;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
@@ -23,7 +24,7 @@ import net.librec.math.structure.SequentialAccessSparseMatrix;
 public class GroupDataModel extends AbstractDataModel {
 	
 
-	private HashMap<Number, Integer>Groupassignation;
+	private Map<Integer, Integer> Groupassignation;
 	private int NumberOfGroups;
 	/**
 	 * Empty constructor.
@@ -46,13 +47,14 @@ public class GroupDataModel extends AbstractDataModel {
         dataConvertor = new TextDataConvertor(dataColumnFormat, inputDataPath, conf.get("data.convert.sep","[\t;, ]"));
         try {
             dataConvertor.processData();
-//            TODO Here I need to build the groups using the variables that I have here.
+//            TODO Here I need to know weather the assignation is going to be performed or it comes in a file
             DataFrame rawData = dataConvertor.getMatrix();
             SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
             this.NumberOfGroups = this.conf.getInt("group.number", 10);
             Kmeans groupBuilder = new Kmeans(this.NumberOfGroups, rawData.getRatingScale().get(0), rawData.getRatingScale().get(rawData.getRatingScale().size()-1), preferenceMatrix);
             groupBuilder.init();
             groupBuilder.calculate();
+            this.Groupassignation = groupBuilder.getAssignation();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -86,6 +88,14 @@ public class GroupDataModel extends AbstractDataModel {
     @Override
     public DataSet getDatetimeDataSet() {
         return dataConvertor.getDatetimeMatrix();
+    }
+    /***
+     * Get Group Assignation
+     * 
+     * @return the Group Assignation computed after the buildConvert step
+     */
+    public Map<Integer,Integer> getGroupAssignation(){
+    	return this.Groupassignation;
     }
 	
 	

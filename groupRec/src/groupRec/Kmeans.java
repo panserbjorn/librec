@@ -169,6 +169,17 @@ public class Kmeans {
 			clusters.get(cluster).addUser(user, i);
 		}
 	}
+	
+	public Map<Integer,Integer> getAssignation(){
+		Map<Integer,Integer> assignment = new HashMap<Integer, Integer>();
+		for (int i = 0; i < clusters.size(); i++) {
+			List<Integer> users = clusters.get(i).getUsersIds();
+			for (Integer user : users) {
+				assignment.put(user, i);
+			}
+		}
+		return assignment;
+	}
 
 
 }
