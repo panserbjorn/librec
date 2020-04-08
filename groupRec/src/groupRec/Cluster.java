@@ -4,8 +4,14 @@
 package groupRec;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Collectors;
+
+import net.librec.math.structure.AbstractVector;
+import net.librec.math.structure.SequentialSparseVector;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Joaqui
@@ -20,15 +26,12 @@ public class Cluster {
 	
 	//Class that represents the users with their ids and their ratings
 	private class clusterUser {
-		public List<Number> ratings;
-		public Number id;
+		public  SequentialSparseVector ratings;
+		public int index;
 	}
 	
-	private List<List<Number>> transformUsers(){
-		return this.users.stream().map(x -> x.ratings).collect(Collectors.toList());
-	}
 
-	private List<Number> centroid;
+	private SequentialSparseVector centroid;
 
 	public int getId() {
 		return id;
@@ -38,19 +41,23 @@ public class Cluster {
 		this.id = id;
 	}
 
-	public List<List<Number>> getUsers() {
-		return this.transformUsers();
+	public Map<Integer,SequentialSparseVector> getUsers() {
+		Map<Integer, SequentialSparseVector> userMap = new HashMap<Integer, SequentialSparseVector>();
+		for (clusterUser user : users) {
+			userMap.put(user.index, user.ratings);
+		}
+		return userMap;
 	}
 	
-	public List<Number> getUsersIds() {
-		return this.users.stream().map(x -> x.id).collect(Collectors.toList());
+	public List<Integer> getUsersIds() {
+		return this.users.stream().map(x -> x.index).collect(Collectors.toList());
 	}
 
-	public void setUsers(List<List<Number>> users, List<Number> ids) {
+	public void setUsers(List<SequentialSparseVector> users, List<Integer> ids) {
 		List<clusterUser> newUsers = new ArrayList<Cluster.clusterUser>();
 		for (int i = 0; i < users.size(); i++) {
 			clusterUser temp = new clusterUser();
-			temp.id = ids.get(i);
+			temp.index = ids.get(i);
 			temp.ratings = users.get(i);
 			newUsers.add(temp);
 			
@@ -58,18 +65,18 @@ public class Cluster {
 		this.users = newUsers;
 	}
 
-	public void addUser(List<Number> newUser, Number id) {
+	public void addUser(SequentialSparseVector newUser, Integer id) {
 		clusterUser temp = new clusterUser();
-		temp.id = id;
+		temp.index = id;
 		temp.ratings = newUser;
 		this.users.add(temp);
 	}
 
-	public List<Number> getCentroid() {
+	public SequentialSparseVector getCentroid() {
 		return centroid;
 	}
 
-	public void setCentroid(List<Number> centroid) {
+	public void setCentroid(SequentialSparseVector centroid) {
 		this.centroid = centroid;
 	}
 

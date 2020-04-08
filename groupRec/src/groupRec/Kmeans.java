@@ -4,11 +4,14 @@
 package groupRec;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
-
+//import net.librec.math.structure.SequentialSparceVector;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
+import net.librec.math.structure.VectorBasedSequentialSparseVector;
 import net.librec.similarity.PCCSimilarity;
 
 /**
@@ -20,8 +23,6 @@ public class Kmeans {
 
 	private int NUM_CLUSTERS = 20;
 
-	// TODO Change this so that it is determined from the DataFrame and/or the
-	// sparce matrix
 	private Number MIN_RATING = 0;
 
 	private Number MAX_RATING = 5;
@@ -32,35 +33,37 @@ public class Kmeans {
 
 	private List<Cluster> clusters;
 
-	public Kmeans(int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix,
-			List<Cluster> clusters) {
+	public Kmeans(int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix) {
 		super();
 		NUM_CLUSTERS = nUM_CLUSTERS;
 		MIN_RATING = mIN_RATING;
 		MAX_RATING = mAX_RATING;
 		this.sparceMatrix = sparceMatrix;
-		this.clusters = clusters;
+		this.clusters = new ArrayList<Cluster>();
 	}
 
 	public void init() {
 		// Initialize the clusters at random positions
 		for (int i = 0; i < NUM_CLUSTERS; i++) {
 			Cluster c = new Cluster();
-
-			List<Number> randomSample = generateRandomCentroid(this.MIN_RATING, this.MAX_RATING);
-			c.setCentroid(randomSample);
+			SequentialSparseVector centroidVector = generateRandomCentroidVector();
+			c.setCentroid(centroidVector);
 			clusters.add(c);
 		}
 	}
 
-	private List<Number> generateRandomCentroid(Number min_RATING2, Number max_RATING2) {
+	private SequentialSparseVector generateRandomCentroidVector() {
 		int items = this.sparceMatrix.columnSize();
 		Random rnd = new Random();
-		List<Number> centroid = new ArrayList<Number>(items);
+		double[] centroid = new double[items];
+		int[] indices = new int[items];
 		for (int i = 0; i < items; i++) {
-			centroid.set(i, rnd.nextDouble()*(max_RATING2.doubleValue()-min_RATING2.doubleValue())+min_RATING2.doubleValue());
+			centroid[i] = rnd.nextDouble()*(this.MAX_RATING.doubleValue()-this.MIN_RATING.doubleValue())+this.MIN_RATING.doubleValue();
+			indices[i] = i;
 		}
-		return centroid;
+		
+		SequentialSparseVector vect = new VectorBasedSequentialSparseVector(items, indices, centroid); 
+		return vect;
 	}
 
 	public void calculate() {
@@ -69,7 +72,7 @@ public class Kmeans {
 
 		while (!finish) {
 			clearClusters();
-			List<List<Number>> lastCentroids = getCentroids();
+			List<SequentialSparseVector> lastCentroids = getCentroids();
 
 			assignCluster();
 
@@ -77,12 +80,12 @@ public class Kmeans {
 
 			iteration++;
 
-			List<List<Number>> currentCentroids = getCentroids();
+			List<SequentialSparseVector> currentCentroids = getCentroids();
 
 			// Calculates total distance between new and old Centroids
 			double distance = 0;
 			for (int i = 0; i < lastCentroids.size(); i++) {
-				distance += 1 - sim.getSimilarity(lastCentroids.get(i), currentCentroids.get(i));
+				distance += 1 - sim.getCorrelation(lastCentroids.get(i), currentCentroids.get(i));
 			}
 			System.out.println("#################");
 			System.out.println("Iteration: " + iteration);
@@ -98,25 +101,40 @@ public class Kmeans {
 	private void calculateCentroids() {
 		int numItems = this.sparceMatrix.columnSize();
 		for (Cluster cluster : clusters) {
-			List<List<Number>> clusterUsers = cluster.getUsers();
-			List<Number> newCentroid = new ArrayList<Number>(numItems);
-			for (List<Number> user : clusterUsers) {
-				for (int i = 0; i < numItems; i++) {
-					newCentroid.set(i, newCentroid.get(i).floatValue() + user.get(i).floatValue());
+			Map<Integer,SequentialSparseVector> clusterUsers = cluster.getUsers();
+			List<Integer> itemsList = new ArrayList<Integer>();
+			Map<Integer,List<Double>> values = new HashMap<Integer, List<Double>>();
+			for (Integer user : clusterUsers.keySet()) {
+				SequentialSparseVector ratings = clusterUsers.get(user);
+				int size = ratings.getNumEntries();
+				for (int i = 0; i < size; i++) {
+					int index = ratings.getIndexAtPosition(i);
+					if (itemsList.contains(index)) {
+						values.get(index).add(ratings.getAtPosition(i));
+					} else {
+						List<Double> cumul = new ArrayList<Double>();
+						cumul.add(ratings.getAtPosition(i));
+						values.put(index, cumul);
+					}
 				}
 			}
-			for (int i = 0; i < numItems; i++) {
-				newCentroid.set(i, newCentroid.get(i).floatValue() / clusterUsers.size());
+			int[] indices = new int[itemsList.size()];
+			double[] avg_values = new double[itemsList.size()];
+			for (int i = 0; i < itemsList.size(); i++) {
+				indices[i] = itemsList.get(i);
+				avg_values[i] = values.get(itemsList.get(i)).stream().mapToDouble(a->a).average().getAsDouble();
 			}
+			SequentialSparseVector new_centroid = new VectorBasedSequentialSparseVector(numItems, indices, avg_values);
+			cluster.setCentroid(new_centroid);
 		}
 
 	}
 
-	private List<List<Number>> getCentroids() {
-		List<List<Number>> centroids = new ArrayList<List<Number>>(NUM_CLUSTERS);
+	private List<SequentialSparseVector> getCentroids() {
+		List<SequentialSparseVector> centroids = new ArrayList<SequentialSparseVector>();
 		for (Cluster cluster : clusters) {
-			List<Number> centroid = cluster.getCentroid();
-			List<Number> copy = new ArrayList<Number>(centroid);
+			SequentialSparseVector centroid = cluster.getCentroid();
+			SequentialSparseVector copy = centroid.clone();
 			centroids.add(copy);
 		}
 		return centroids;
@@ -129,21 +147,21 @@ public class Kmeans {
 	}
 
 	private void assignCluster() {
-		double max = Double.MAX_VALUE;
+		double max = Double.MIN_VALUE;
 		double min = max;
 		int cluster = 0;
-		double distance = 0.0;
+		double similarity = 0.0;
 
 		int numUsers = this.sparceMatrix.rowSize();
 
 		for (int i = 0; i < numUsers; i++) {
-			List<Number> user = transformVectorToList(this.sparceMatrix.row(i));
+			SequentialSparseVector user = this.sparceMatrix.row(i);
 			min = max;
 			for (int j = 0; j < NUM_CLUSTERS; j++) {
 				Cluster c = clusters.get(j);
-				distance = 1.0 - sim.getSimilarity(user, c.getCentroid());
-				if (distance < min) {
-					min = distance;
+				similarity = sim.getCorrelation(user, c.getCentroid());
+				if (similarity > max) {
+					max = similarity;
 					cluster = j;
 				}
 			}
@@ -152,12 +170,5 @@ public class Kmeans {
 		}
 	}
 
-	private List<Number> transformVectorToList(SequentialSparseVector row) {
-		List<Number> ratings = new ArrayList<Number>();
-		for (Object rating : row) {
-			ratings.add((Number) rating);
-		}
-		return ratings;
-	}
 
 }

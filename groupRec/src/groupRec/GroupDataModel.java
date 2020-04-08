@@ -4,13 +4,16 @@
 package groupRec;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configured;
 import net.librec.data.convertor.TextDataConvertor;
 import net.librec.data.model.AbstractDataModel;
+import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
+import net.librec.math.structure.SequentialAccessSparseMatrix;
 
 /**
  * @author Joaqui This class will be the abstract class in charge of generating
@@ -20,6 +23,8 @@ import net.librec.math.structure.DataSet;
 public class GroupDataModel extends AbstractDataModel {
 	
 
+	private HashMap<Number, Integer>Groupassignation;
+	private int NumberOfGroups;
 	/**
 	 * Empty constructor.
 	 */
@@ -38,9 +43,16 @@ public class GroupDataModel extends AbstractDataModel {
 		    inputDataPath[i] = conf.get(Configured.CONF_DFS_DATA_DIR) + "/" + inputDataPath[i];
         }
         String dataColumnFormat = conf.get(Configured.CONF_DATA_COLUMN_FORMAT, "UIR");
-        dataConvertor = new GroupTextDataConvertor(dataColumnFormat, inputDataPath, conf.get("data.convert.sep","[\t;, ]"));
+        dataConvertor = new TextDataConvertor(dataColumnFormat, inputDataPath, conf.get("data.convert.sep","[\t;, ]"));
         try {
             dataConvertor.processData();
+//            TODO Here I need to build the groups using the variables that I have here.
+            DataFrame rawData = dataConvertor.getMatrix();
+            SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
+            this.NumberOfGroups = this.conf.getInt("group.number", 10);
+            Kmeans groupBuilder = new Kmeans(this.NumberOfGroups, rawData.getRatingScale().get(0), rawData.getRatingScale().get(rawData.getRatingScale().size()-1), preferenceMatrix);
+            groupBuilder.init();
+            groupBuilder.calculate();
         } catch (IOException e) {
             e.printStackTrace();
         }
