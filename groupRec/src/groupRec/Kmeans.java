@@ -3,15 +3,24 @@
  */
 package groupRec;
 
+import java.awt.event.ItemListener;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import javax.sound.midi.Sequence;
+
+import net.librec.conf.Configuration;
 //import net.librec.math.structure.SequentialSparceVector;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.math.structure.VectorBasedSequentialSparseVector;
+import net.librec.similarity.CosineSimilarity;
+import net.librec.similarity.MSESimilarity;
 import net.librec.similarity.PCCSimilarity;
 
 /**
@@ -20,6 +29,8 @@ import net.librec.similarity.PCCSimilarity;
  *         This class performs the KMeans clustering algorithm
  */
 public class Kmeans {
+	
+	private int MAX_ITERATION = 100;
 
 	private int NUM_CLUSTERS = 20;
 
@@ -29,11 +40,11 @@ public class Kmeans {
 
 	private SequentialAccessSparseMatrix sparceMatrix;
 
-	private PCCSimilarity sim = new PCCSimilarity();
+	private CosineSimilarity sim = new CosineSimilarity();
 
 	private List<Cluster> clusters;
 
-	public Kmeans(int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix) {
+	public Kmeans( int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix) {
 		super();
 		NUM_CLUSTERS = nUM_CLUSTERS;
 		MIN_RATING = mIN_RATING;
@@ -85,13 +96,14 @@ public class Kmeans {
 			// Calculates total distance between new and old Centroids
 			double distance = 0;
 			for (int i = 0; i < lastCentroids.size(); i++) {
-				distance += 1 - sim.getCorrelation(lastCentroids.get(i), currentCentroids.get(i));
+//				distance += 1 - sim.getCorrelation(lastCentroids.get(i), currentCentroids.get(i));
+				distance += this.Distance(lastCentroids.get(i), currentCentroids.get(i));
 			}
 			System.out.println("#################");
 			System.out.println("Iteration: " + iteration);
 			System.out.println("Centroid distances: " + distance);
 
-			if (distance == 0) {
+			if (distance == 0 || iteration > MAX_ITERATION) {
 				finish = true;
 			}
 		}
@@ -112,6 +124,7 @@ public class Kmeans {
 					if (itemsList.contains(index)) {
 						values.get(index).add(ratings.getAtPosition(i));
 					} else {
+						itemsList.add(index);
 						List<Double> cumul = new ArrayList<Double>();
 						cumul.add(ratings.getAtPosition(i));
 						values.put(index, cumul);
@@ -120,6 +133,7 @@ public class Kmeans {
 			}
 			int[] indices = new int[itemsList.size()];
 			double[] avg_values = new double[itemsList.size()];
+			Collections.sort(itemsList);
 			for (int i = 0; i < itemsList.size(); i++) {
 				indices[i] = itemsList.get(i);
 				avg_values[i] = values.get(itemsList.get(i)).stream().mapToDouble(a->a).average().getAsDouble();
@@ -147,10 +161,12 @@ public class Kmeans {
 	}
 
 	private void assignCluster() {
-		double max = Double.MIN_VALUE;
+		
+		double max = Double.MAX_VALUE;
 		double min = max;
 		int cluster = 0;
 		double similarity = 0.0;
+		double distance = Double.MAX_VALUE;
 
 		int numUsers = this.sparceMatrix.rowSize();
 
@@ -159,9 +175,14 @@ public class Kmeans {
 			min = max;
 			for (int j = 0; j < NUM_CLUSTERS; j++) {
 				Cluster c = clusters.get(j);
-				similarity = sim.getCorrelation(user, c.getCentroid());
-				if (similarity > max) {
-					max = similarity;
+				distance = this.Distance(user, c.getCentroid());
+//				similarity = sim.getCorrelationIndependently(this.conf, user, c.getCentroid());
+				if (Double.isNaN(distance)) {
+//					System.out.println("NAN!");
+					distance = Double.MAX_VALUE;
+				}
+				if (distance < min) {
+					min = distance;
 					cluster = j;
 				}
 			}
@@ -179,6 +200,47 @@ public class Kmeans {
 			}
 		}
 		return assignment;
+	}
+	
+	private double Distance(SequentialSparseVector thisVector, SequentialSparseVector thatVector) {
+		
+		List<Double> thisList = new ArrayList<>();
+        List<Double> thatList = new ArrayList<>();
+
+        int thisPosition = 0, thatPosition = 0;
+        int thisSize = thisVector.getNumEntries(), thatSize = thatVector.getNumEntries();
+        int thisIndex, thatIndex;
+        while (thisPosition < thisSize && thatPosition < thatSize) {
+            thisIndex = thisVector.getIndexAtPosition(thisPosition);
+            thatIndex = thatVector.getIndexAtPosition(thatPosition);
+            if (thisIndex == thatIndex) {
+                thisList.add(thisVector.getAtPosition(thisPosition));
+                thatList.add(thatVector.getAtPosition(thatPosition));
+                thisPosition++;
+                thatPosition++;
+            } else if (thisIndex > thatIndex) {
+                thatPosition++;
+            } else {
+                thisPosition++;
+            }
+        }
+        if (thisList.isEmpty()) {
+        	return Double.NaN;
+        }
+		double sum = 0.0;
+		for (int i = 0; i < thisList.size(); i++) {
+			sum += Math.pow((thisList.get(i)-thatList.get(i)), 2);
+		}
+		return Math.sqrt(sum);
+	}
+	
+	
+	public Map<Integer, List<Integer>> getGroupMapping(){
+		Map<Integer,List<Integer>> groups = new HashMap<Integer, List<Integer>>();
+		for (int i = 0; i < clusters.size(); i++) {
+			groups.put(i, clusters.get(i).getUsersIds());
+		}
+		return groups;
 	}
 
 

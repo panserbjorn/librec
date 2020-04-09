@@ -3,6 +3,10 @@
  */
 package groupRec;
 
+import java.security.acl.Group;
+import java.util.List;
+import java.util.Map;
+
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configuration.Resource;
@@ -40,13 +44,14 @@ public class testingClass {
 //		The first example uses the movieLens 100-k with a KNN item recommender
 //		firstExample();
 //		The second example uses the filmtrust dataset with a KNN item recommender
-		secondExample();
+//		secondExample();
 //		The third example uses a ranked recommender with the movieLens 100-k with BPR recommender
 //		thirdExample();
 //		The fourth examples uses a ranked recommender with movieLens 100-k and ItemKnn recommender with NDCG evaluator
 //		fourthExample();
 //		The fifth example uses a ranked recommender with movieLens 100-k and ItemKnn recommender with precision evaluator
 //		fifthExample();
+		groupExample();
 
 		System.out.println("This should have ended");
 
@@ -256,13 +261,18 @@ public class testingClass {
 		System.out.println("precision:" + precision);
 	}
 
-	static void groupExample(String configFile) throws LibrecException {
+	static void groupExample() throws LibrecException {
 		// build data model
 		Configuration conf = new Configuration();
 		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
-		TextDataModel dataModel = new TextDataModel(conf);
+		GroupDataModel dataModel = new GroupDataModel(conf);
 		dataModel.buildDataModel();
-		dataModel.getTrainDataSet();
+
+		Map<Integer, Integer> groupAssignation = dataModel.getGroupAssignation();
+		
+		Map<Integer, List<Integer>> groups = dataModel.getGroups();
+		
+//		DataSet trainDataSet = dataModel.getTrainDataSet();
 
 		// build recommender context
 		RecommenderContext context = new RecommenderContext(conf, dataModel);
@@ -279,9 +289,6 @@ public class testingClass {
 
 		// run recommender algorithm
 		recommender.train(context);
-
-		// TODO Fill the sparce matrix for the ratings of the users
-//		dataModel.getUserMappingData()
 
 		// evaluate the recommended result
 		EvalContext evalContext = new EvalContext(conf, recommender, dataModel.getTestDataSet(),

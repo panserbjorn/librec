@@ -32,6 +32,10 @@ public class Cluster {
 	
 
 	private SequentialSparseVector centroid;
+	
+	public Cluster() {
+		this.users = new ArrayList<Cluster.clusterUser>();
+	}
 
 	public int getId() {
 		return id;
