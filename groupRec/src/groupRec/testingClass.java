@@ -7,6 +7,8 @@ import java.security.acl.Group;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Table;
+
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configuration.Resource;
@@ -17,8 +19,10 @@ import net.librec.eval.RecommenderEvaluator;
 import net.librec.eval.ranking.NormalizedDCGEvaluator;
 import net.librec.eval.ranking.PrecisionEvaluator;
 import net.librec.eval.rating.RMSEEvaluator;
+import net.librec.increment.rating.UserKNNRecommender;
 import net.librec.math.algorithm.Randoms;
 import net.librec.math.structure.DataSet;
+import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.recommender.Recommender;
 import net.librec.recommender.RecommenderContext;
 import net.librec.recommender.cf.ItemKNNRecommender;
@@ -51,7 +55,8 @@ public class testingClass {
 //		fourthExample();
 //		The fifth example uses a ranked recommender with movieLens 100-k and ItemKnn recommender with precision evaluator
 //		fifthExample();
-		groupExample();
+//		groupExample();
+		groupNewProccess();
 
 		System.out.println("This should have ended");
 
@@ -297,6 +302,49 @@ public class testingClass {
 		ndcgEvaluator.setTopN(10);
 		double ndcgValue = ndcgEvaluator.evaluate(evalContext);
 		System.out.println("ndcg:" + ndcgValue);
+	}
+	
+	static void groupNewProccess() throws LibrecException {
+		Configuration conf = new Configuration();
+		
+		conf.set("dfs.data.dir",  "C:/Users/Joaqui/GroupLibRec/librec/data");
+		conf.set("rec.recommender.similarity.key", "item");
+		conf.set("rec.neighbors.knn.number", "10");
+		
+		TextDataModel dataModel = new TextDataModel(conf);
+//		TODO: Depending on weather the train and test splitting need the group information, I'll have to generate my own splitters
+		dataModel.buildDataModel();
+		
+		
+		RecommenderContext reccontext = new RecommenderContext(conf, dataModel);
+		
+		RecommenderSimilarity similarity = new CosineSimilarity();
+		similarity.buildSimilarityMatrix(dataModel);
+		reccontext.setSimilarity(similarity);
+		
+		ItemKNNRecommender rec = new ItemKNNRecommender();
+		rec.setContext(reccontext);
+		
+		rec.train(reccontext);
+		
+		SequentialAccessSparseMatrix  trainDataSet = (SequentialAccessSparseMatrix) dataModel.getTrainDataSet();
+		
+//		TODO change this because the method is deprecated !~!!!!!!!!!!!!!!
+		Table<Integer,Integer,Double> trainData = trainDataSet.getDataTable();
+		
+		int numUsers = trainDataSet.rowSize();
+		int numItems = trainDataSet.columnSize();
+		double[][] ratings = new double[numUsers][numItems];
+		for (int i = 0; i < numUsers; i++) {
+			for (int j = 0; j < numItems; j++) {
+				if (trainData.contains(i, j)) {
+					ratings[i][j] = trainData.get(i, j);
+				} else {
+					ratings[i][j] = rec.predict(i, j);
+				}
+			}
+		}
+		
 	}
 
 }
