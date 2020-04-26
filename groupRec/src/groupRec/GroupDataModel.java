@@ -11,11 +11,14 @@ import java.util.Map;
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configured;
+import net.librec.data.DataSplitter;
 import net.librec.data.convertor.TextDataConvertor;
 import net.librec.data.model.AbstractDataModel;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
+import net.librec.util.DriverClassUtil;
+import net.librec.util.ReflectionUtil;
 
 /**
  * @author Joaqui This class will be the abstract class in charge of generating
@@ -105,6 +108,19 @@ public class GroupDataModel extends AbstractDataModel {
 
 	public Map<Integer, List<Integer>> getGroups() {
 		return this.Groups;
+	}
+	
+	
+	@Override
+	protected void buildSplitter() throws LibrecException {
+		dataSplitter = new GroupDataSplitter(this.Groupassignation,this.Groups);
+		
+        dataSplitter.setDataConvertor(dataConvertor);
+        dataSplitter.splitData();
+        trainDataSet = dataSplitter.getTrainData();
+        testDataSet = dataSplitter.getTestData();
+        
+//		super.buildSplitter();
 	}
 
 }

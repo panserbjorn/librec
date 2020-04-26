@@ -3,7 +3,6 @@
  */
 package groupRec;
 
-import java.security.acl.Group;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +18,6 @@ import net.librec.eval.RecommenderEvaluator;
 import net.librec.eval.ranking.NormalizedDCGEvaluator;
 import net.librec.eval.ranking.PrecisionEvaluator;
 import net.librec.eval.rating.RMSEEvaluator;
-import net.librec.increment.rating.UserKNNRecommender;
 import net.librec.math.algorithm.Randoms;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
@@ -94,7 +92,7 @@ public class testingClass {
 
 		DataSet testDataSet = dataModel.getTestDataSet();
 
-		RecommendedList recommendedList = recommender.recommendRating(testDataSet);
+//		RecommendedList recommendedList = recommender.recommendRating(testDataSet);
 
 		EvalContext evalContx = new EvalContext(conf, recommender, testDataSet);
 
@@ -141,7 +139,7 @@ public class testingClass {
 
 		DataSet testDataSet = dataModel.getTestDataSet();
 
-		RecommendedList recommendedList = recommender.recommendRating(testDataSet);
+//		RecommendedList recommendedList = recommender.recommendRating(testDataSet);
 
 		EvalContext evalContx = new EvalContext(conf, recommender, testDataSet);
 
@@ -184,7 +182,7 @@ public class testingClass {
 		DataSet testDataSet = dataModel.getTestDataSet();
 
 //				RecommendedList recommendedList = recommender.recommendRank(testDataSet);
-		RecommendedList recommendedList = recommender.recommendRank();
+//		RecommendedList recommendedList = recommender.recommendRank();
 
 //				EvalContext evalContx = new EvalContext(conf, recommender, testDataSet);
 		EvalContext evalContx = new EvalContext(conf, recommender, testDataSet);
@@ -311,7 +309,8 @@ public class testingClass {
 		conf.set("rec.recommender.similarity.key", "item");
 		conf.set("rec.neighbors.knn.number", "10");
 		
-		TextDataModel dataModel = new TextDataModel(conf);
+//		TextDataModel dataModel = new TextDataModel(conf);
+		GroupDataModel dataModel = new GroupDataModel(conf);
 //		TODO: Depending on weather the train and test splitting need the group information, I'll have to generate my own splitters
 		dataModel.buildDataModel();
 		
@@ -322,6 +321,8 @@ public class testingClass {
 		similarity.buildSimilarityMatrix(dataModel);
 		reccontext.setSimilarity(similarity);
 		
+		GroupRecommender gRec = new GroupRecommender();
+		
 		ItemKNNRecommender rec = new ItemKNNRecommender();
 		rec.setContext(reccontext);
 		
@@ -329,7 +330,7 @@ public class testingClass {
 		
 		SequentialAccessSparseMatrix  trainDataSet = (SequentialAccessSparseMatrix) dataModel.getTrainDataSet();
 		
-//		TODO change this because the method is deprecated !~!!!!!!!!!!!!!!
+//		TODO change this because the method is deprecated !!!!!!!!!!!!!!!
 		Table<Integer,Integer,Double> trainData = trainDataSet.getDataTable();
 		
 		int numUsers = trainDataSet.rowSize();
