@@ -100,10 +100,10 @@ public class GroupRecommender extends AbstractRecommender {
         LibrecDataList<AbstractBaseDataEntry> librecDataList = new BaseDataList<>();
         for (int userIdx = 0; userIdx < numUsers; ++userIdx) {
             int[] itemIdsArray = predictMatrix.row(userIdx).getIndices();
+            TODO: Should I change this so that the recommendation instead of being for each data entry, is for the groups?
             AbstractBaseDataEntry baseRatingDataEntry = new BaseRatingDataEntry(userIdx, itemIdsArray);
             librecDataList.addDataEntry(baseRatingDataEntry);
         }
-
         return this.recommendRating(librecDataList);
 	}
 
@@ -118,6 +118,8 @@ public class GroupRecommender extends AbstractRecommender {
             int userIdx = baseRatingDataEntry.getUserId();
             int[] itemIdsArray = baseRatingDataEntry.getItemIdsArray();
             for (int itemIdx : itemIdsArray) {
+//            	TODO: Once I have a the user and the item, I should get the ratings for the whole group, not only this user's rating
+//            	I should store the ratings computed for an item in a group already because I might have to compute it again. 
                 double predictRating = predict(userIdx, itemIdx, true);
                 recommendedList.add(contextIdx, itemIdx, predictRating);
             }
