@@ -5,19 +5,24 @@ package groupRec;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import net.librec.common.LibrecException;
 import net.librec.data.structure.AbstractBaseDataEntry;
-import net.librec.data.structure.BaseDataList;
-import net.librec.data.structure.BaseRatingDataEntry;
 import net.librec.data.structure.LibrecDataList;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.recommender.AbstractRecommender;
+import net.librec.recommender.Recommender;
+import net.librec.recommender.RecommenderContext;
+import net.librec.recommender.cf.ItemKNNRecommender;
+import net.librec.recommender.item.ContextKeyValueEntry;
 import net.librec.recommender.item.RecommendedList;
 
 /**
@@ -26,106 +31,129 @@ import net.librec.recommender.item.RecommendedList;
  */
 public class GroupRecommender extends AbstractRecommender {
 	/**
-     * trainMatrix
-     */
-    protected SequentialAccessSparseMatrix trainMatrix;
+	 * trainMatrix
+	 */
+	protected SequentialAccessSparseMatrix trainMatrix;
 
-    /**
-     * testMatrix
-     */
-    protected SequentialAccessSparseMatrix testMatrix;
+	/**
+	 * testMatrix
+	 */
+	protected SequentialAccessSparseMatrix testMatrix;
 
-    /**
-     * validMatrix
-     */
-    protected SequentialAccessSparseMatrix validMatrix;
+	/**
+	 * validMatrix
+	 */
+	protected SequentialAccessSparseMatrix validMatrix;
 
-    /**
-     * the number of users
-     */
-    protected int numUsers;
+	/**
+	 * the number of users
+	 */
+	protected int numUsers;
 
-    /**
-     * the number of items
-     */
-    protected int numItems;
+	/**
+	 * the number of items
+	 */
+	protected int numItems;
 
-    /**
-     * the number of rates
-     */
-    protected int numRates;
+	/**
+	 * the number of rates
+	 */
+	protected int numRates;
 
-    /**
-     * Maximum rate of rating times
-     */
-    protected double maxRate;
+	/**
+	 * Maximum rate of rating times
+	 */
+	protected double maxRate;
 
-    /**
-     * Minimum rate of rating times
-     */
-    protected double minRate;
-    
-    /**
-     * a list of rating scales
-     */
-    protected static List<Double> ratingScale;
+	/**
+	 * Minimum rate of rating times
+	 */
+	protected double minRate;
 
-    @Override
-    protected void setup() throws LibrecException {
-    	super.setup();
-    	trainMatrix = (SequentialAccessSparseMatrix) getDataModel().getTrainDataSet();
-        testMatrix = (SequentialAccessSparseMatrix) getDataModel().getTestDataSet();
-        validMatrix = (SequentialAccessSparseMatrix) getDataModel().getValidDataSet();
+	/**
+	 * a list of rating scales
+	 */
+	protected static List<Double> ratingScale;
 
-        numUsers = trainMatrix.rowSize();
-        numItems = trainMatrix.columnSize();
-        numRates = trainMatrix.size();
-        Set<Double> ratingSet = new HashSet<>();
-        for (MatrixEntry matrixEntry : trainMatrix) {
-            ratingSet.add(matrixEntry.get());
-        }
-        ratingScale = new ArrayList<>(ratingSet);
-        Collections.sort(ratingScale);
-        maxRate = Collections.max(ratingScale);
-        minRate = Collections.min(ratingScale);
-        if (minRate == maxRate) {
-            minRate = 0;
-        }
-    }
-	
+	protected Recommender baseRecommender;
+
+	@Override
+	protected void setup() throws LibrecException {
+		super.setup();
+		this.baseRecommender = new ItemKNNRecommender();
+		trainMatrix = (SequentialAccessSparseMatrix) getDataModel().getTrainDataSet();
+		testMatrix = (SequentialAccessSparseMatrix) getDataModel().getTestDataSet();
+		validMatrix = (SequentialAccessSparseMatrix) getDataModel().getValidDataSet();
+
+		numUsers = trainMatrix.rowSize();
+		numItems = trainMatrix.columnSize();
+		numRates = trainMatrix.size();
+		Set<Double> ratingSet = new HashSet<>();
+		for (MatrixEntry matrixEntry : trainMatrix) {
+			ratingSet.add(matrixEntry.get());
+		}
+		ratingScale = new ArrayList<>(ratingSet);
+		Collections.sort(ratingScale);
+		maxRate = Collections.max(ratingScale);
+		minRate = Collections.min(ratingScale);
+		if (minRate == maxRate) {
+			minRate = 0;
+		}
+	}
+
+	@Override
+	public void setContext(RecommenderContext context) {
+		// TODO Auto-generated method stub
+		super.setContext(context);
+		this.baseRecommender.setContext(context);
+	}
 
 	@Override
 	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
-		SequentialAccessSparseMatrix predictMatrix = (SequentialAccessSparseMatrix) predictDataSet;
-        LibrecDataList<AbstractBaseDataEntry> librecDataList = new BaseDataList<>();
-        for (int userIdx = 0; userIdx < numUsers; ++userIdx) {
-            int[] itemIdsArray = predictMatrix.row(userIdx).getIndices();
-            TODO: Should I change this so that the recommendation instead of being for each data entry, is for the groups?
-            AbstractBaseDataEntry baseRatingDataEntry = new BaseRatingDataEntry(userIdx, itemIdsArray);
-            librecDataList.addDataEntry(baseRatingDataEntry);
-        }
-        return this.recommendRating(librecDataList);
+//		Get Individual recommendations
+		RecommendedList individualRecomm = this.baseRecommender.recommendRating(predictDataSet);
+		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
+		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
+
+//        Aggregate the group ratings in structure
+		Map<Integer, Map<Integer, List<Double>>> groupRatings = new HashMap<Integer, Map<Integer, List<Double>>>();
+		for (Integer group : groups.keySet()) {
+			groupRatings.put(group, new HashMap<Integer, List<Double>>());
+		}
+		Iterator<ContextKeyValueEntry> iter = individualRecomm.iterator();
+		while (iter.hasNext()) {
+			ContextKeyValueEntry contextKeyValueEntry = iter.next();
+			if (contextKeyValueEntry != null) {
+				int userId = contextKeyValueEntry.getContextIdx();
+				int itemId = contextKeyValueEntry.getKey();
+				double value = contextKeyValueEntry.getValue();
+				Map<Integer, List<Double>> currentGroupRatings = groupRatings.get(groupAssignation.get(userId));
+				if (!currentGroupRatings.containsKey(itemId)) {
+					currentGroupRatings.put(itemId, new ArrayList<Double>());
+				}
+				currentGroupRatings.get(itemId).add(value);
+			}
+		}
+
+		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
+
+//		TODO This method only works if all the ratings for the group are in the test. Otherwise I would have to join the predictions for the test and the train ratings of the group
+
+		for (Integer group : groupRatings.keySet()) {
+			for (Integer item : groupRatings.get(group).keySet()) {
+				List<Double> groupScores = groupRatings.get(group).get(item);
+//				TODO: Need to implement other group models, not only avg.
+				recommendedList.add(group, item, groupScores.stream().mapToDouble(a -> a).average().getAsDouble());
+			}
+		}
+
+		return recommendedList;
 	}
 
 	@Override
 	public RecommendedList recommendRating(LibrecDataList<AbstractBaseDataEntry> dataList) throws LibrecException {
-//		TODO: This will be performed by the secondary recommender (which should be established in the setup)
-		int numDataEntries = dataList.size();
-        RecommendedList recommendedList = new RecommendedList(numDataEntries);
-        for (int contextIdx = 0; contextIdx < numDataEntries; ++contextIdx) {
-            recommendedList.addList(new ArrayList<>());
-            BaseRatingDataEntry baseRatingDataEntry = (BaseRatingDataEntry) dataList.getDataEntry(contextIdx);
-            int userIdx = baseRatingDataEntry.getUserId();
-            int[] itemIdsArray = baseRatingDataEntry.getItemIdsArray();
-            for (int itemIdx : itemIdsArray) {
-//            	TODO: Once I have a the user and the item, I should get the ratings for the whole group, not only this user's rating
-//            	I should store the ratings computed for an item in a group already because I might have to compute it again. 
-                double predictRating = predict(userIdx, itemIdx, true);
-                recommendedList.add(contextIdx, itemIdx, predictRating);
-            }
-        }
-
-        return recommendedList;
+//		TODO: Do the same thing that the other recommendRating method does
+		return null;
 	}
 
 	@Override
@@ -143,7 +171,8 @@ public class GroupRecommender extends AbstractRecommender {
 	@Override
 	protected void trainModel() throws LibrecException {
 		// TODO Auto-generated method stub
-		
+		this.baseRecommender.train(getContext());
+
 	}
 
 }

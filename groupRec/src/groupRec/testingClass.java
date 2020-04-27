@@ -54,7 +54,7 @@ public class testingClass {
 //		The fifth example uses a ranked recommender with movieLens 100-k and ItemKnn recommender with precision evaluator
 //		fifthExample();
 //		groupExample();
-		groupNewProccess();
+		fillSpareceMatrixExample();
 
 		System.out.println("This should have ended");
 
@@ -302,16 +302,14 @@ public class testingClass {
 		System.out.println("ndcg:" + ndcgValue);
 	}
 	
-	static void groupNewProccess() throws LibrecException {
+	static void fillSpareceMatrixExample() throws LibrecException {
 		Configuration conf = new Configuration();
 		
 		conf.set("dfs.data.dir",  "C:/Users/Joaqui/GroupLibRec/librec/data");
 		conf.set("rec.recommender.similarity.key", "item");
 		conf.set("rec.neighbors.knn.number", "10");
 		
-//		TextDataModel dataModel = new TextDataModel(conf);
-		GroupDataModel dataModel = new GroupDataModel(conf);
-//		TODO: Depending on weather the train and test splitting need the group information, I'll have to generate my own splitters
+		TextDataModel dataModel = new TextDataModel(conf);
 		dataModel.buildDataModel();
 		
 		
@@ -321,7 +319,6 @@ public class testingClass {
 		similarity.buildSimilarityMatrix(dataModel);
 		reccontext.setSimilarity(similarity);
 		
-		GroupRecommender gRec = new GroupRecommender();
 		
 		ItemKNNRecommender rec = new ItemKNNRecommender();
 		rec.setContext(reccontext);
