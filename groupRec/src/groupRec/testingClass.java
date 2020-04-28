@@ -54,7 +54,8 @@ public class testingClass {
 //		The fifth example uses a ranked recommender with movieLens 100-k and ItemKnn recommender with precision evaluator
 //		fifthExample();
 //		groupExample();
-		fillSpareceMatrixExample();
+//		fillSpareceMatrixExample();
+		groupNewExample();
 
 		System.out.println("This should have ended");
 
@@ -272,9 +273,9 @@ public class testingClass {
 		dataModel.buildDataModel();
 
 		Map<Integer, Integer> groupAssignation = dataModel.getGroupAssignation();
-		
+
 		Map<Integer, List<Integer>> groups = dataModel.getGroups();
-		
+
 //		DataSet trainDataSet = dataModel.getTrainDataSet();
 
 		// build recommender context
@@ -301,35 +302,33 @@ public class testingClass {
 		double ndcgValue = ndcgEvaluator.evaluate(evalContext);
 		System.out.println("ndcg:" + ndcgValue);
 	}
-	
+
 	static void fillSpareceMatrixExample() throws LibrecException {
 		Configuration conf = new Configuration();
-		
-		conf.set("dfs.data.dir",  "C:/Users/Joaqui/GroupLibRec/librec/data");
+
+		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
 		conf.set("rec.recommender.similarity.key", "item");
 		conf.set("rec.neighbors.knn.number", "10");
-		
+
 		TextDataModel dataModel = new TextDataModel(conf);
 		dataModel.buildDataModel();
-		
-		
+
 		RecommenderContext reccontext = new RecommenderContext(conf, dataModel);
-		
+
 		RecommenderSimilarity similarity = new CosineSimilarity();
 		similarity.buildSimilarityMatrix(dataModel);
 		reccontext.setSimilarity(similarity);
-		
-		
+
 		ItemKNNRecommender rec = new ItemKNNRecommender();
 		rec.setContext(reccontext);
-		
+
 		rec.train(reccontext);
-		
-		SequentialAccessSparseMatrix  trainDataSet = (SequentialAccessSparseMatrix) dataModel.getTrainDataSet();
-		
+
+		SequentialAccessSparseMatrix trainDataSet = (SequentialAccessSparseMatrix) dataModel.getTrainDataSet();
+
 //		TODO change this because the method is deprecated !!!!!!!!!!!!!!!
-		Table<Integer,Integer,Double> trainData = trainDataSet.getDataTable();
-		
+		Table<Integer, Integer, Double> trainData = trainDataSet.getDataTable();
+
 		int numUsers = trainDataSet.rowSize();
 		int numItems = trainDataSet.columnSize();
 		double[][] ratings = new double[numUsers][numItems];
@@ -342,7 +341,33 @@ public class testingClass {
 				}
 			}
 		}
+
+	}
+
+	static void groupNewExample() throws LibrecException {
+		Configuration conf = new Configuration();
+
+		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
+		conf.set("rec.recommender.similarity.key", "item");
+		conf.set("rec.neighbors.knn.number", "10");
+
+		GroupDataModel dataModel = new GroupDataModel(conf);
+		dataModel.buildDataModel();
 		
+		RecommenderContext reccontext = new RecommenderContext(conf, dataModel);
+
+		RecommenderSimilarity similarity = new CosineSimilarity();
+		similarity.buildSimilarityMatrix(dataModel);
+		reccontext.setSimilarity(similarity);
+		
+		GroupRecommender rec = new GroupRecommender();
+		rec.setContext(reccontext);
+
+		rec.train(reccontext);
+		
+		RecommendedList groupRecommendations = rec.recommendRating(dataModel.getTestDataSet());
+		
+		System.out.println(groupRecommendations.size());
 	}
 
 }

@@ -62,6 +62,10 @@ public class GroupDataModel extends AbstractDataModel {
 			groupBuilder.calculate();
 			this.Groupassignation = groupBuilder.getAssignation();
 			this.Groups = groupBuilder.getGroupMapping();
+			LOG.info("Groups Built sucessfully:");
+			for (Integer group : this.Groups.keySet()) {
+				LOG.info(group.toString() + ": " + Integer.toString(this.Groups.get(group).size()));
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

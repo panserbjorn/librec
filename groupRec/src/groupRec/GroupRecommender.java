@@ -81,6 +81,7 @@ public class GroupRecommender extends AbstractRecommender {
 	protected void setup() throws LibrecException {
 		super.setup();
 		this.baseRecommender = new ItemKNNRecommender();
+		this.baseRecommender.setContext(this.getContext());
 		trainMatrix = (SequentialAccessSparseMatrix) getDataModel().getTrainDataSet();
 		testMatrix = (SequentialAccessSparseMatrix) getDataModel().getTestDataSet();
 		validMatrix = (SequentialAccessSparseMatrix) getDataModel().getValidDataSet();
@@ -101,21 +102,13 @@ public class GroupRecommender extends AbstractRecommender {
 		}
 	}
 
-	@Override
-	public void setContext(RecommenderContext context) {
-		// TODO Auto-generated method stub
-		super.setContext(context);
-		this.baseRecommender.setContext(context);
-	}
 
-	@Override
-	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
-//		Get Individual recommendations
-		RecommendedList individualRecomm = this.baseRecommender.recommendRating(predictDataSet);
+	private RecommendedList buildGroupRecommendations(RecommendedList individualRecomm) {
 		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
 
 //        Aggregate the group ratings in structure
+//		TODO This might fail if there are groups that don't have anything inside the test set
 		Map<Integer, Map<Integer, List<Double>>> groupRatings = new HashMap<Integer, Map<Integer, List<Double>>>();
 		for (Integer group : groups.keySet()) {
 			groupRatings.put(group, new HashMap<Integer, List<Double>>());
@@ -137,23 +130,39 @@ public class GroupRecommender extends AbstractRecommender {
 
 		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
 
+//		TODO I could parallelize this so that it is FAR more efficient
 //		TODO This method only works if all the ratings for the group are in the test. Otherwise I would have to join the predictions for the test and the train ratings of the group
-
-		for (Integer group : groupRatings.keySet()) {
+		for (int group = 0; group < groups.size(); group++) {
+			recommendedList.addList(new ArrayList<>());
 			for (Integer item : groupRatings.get(group).keySet()) {
 				List<Double> groupScores = groupRatings.get(group).get(item);
-//				TODO: Need to implement other group models, not only avg.
-				recommendedList.add(group, item, groupScores.stream().mapToDouble(a -> a).average().getAsDouble());
+				recommendedList.add(group, item, groupModeling(groupScores));
 			}
 		}
 
 		return recommendedList;
+
+	}
+	
+	
+//	TODO: this should be an abstract method that the different implementations of the GroupRecommender should implement
+	protected Double groupModeling(List<Double> groupScores) {
+//		TODO: Need to implement other group models, not only avg
+		return groupScores.stream().mapToDouble(a -> a).average().getAsDouble();
+	}
+
+	@Override
+	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
+//		Get Individual recommendations
+		RecommendedList individualRecomm = this.baseRecommender.recommendRating(predictDataSet);
+		return buildGroupRecommendations(individualRecomm);
 	}
 
 	@Override
 	public RecommendedList recommendRating(LibrecDataList<AbstractBaseDataEntry> dataList) throws LibrecException {
-//		TODO: Do the same thing that the other recommendRating method does
-		return null;
+//		Get Individual recommendations
+		RecommendedList individualRecommendations = this.baseRecommender.recommendRating(dataList);
+		return this.buildGroupRecommendations(individualRecommendations);
 	}
 
 	@Override

@@ -30,7 +30,7 @@ import net.librec.similarity.PCCSimilarity;
  */
 public class Kmeans {
 	
-	private int MAX_ITERATION = 100;
+	private int MAX_ITERATION = 30;
 
 	private int NUM_CLUSTERS = 20;
 

@@ -62,10 +62,13 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 			int numTests = (int) Math.round(groupRat.size() * percentageOfGroupRatingForTest);
 			if (numTests > 0) {
 				try {
-					int[] givenPositions = Randoms.nextIntArray(numTests, groupRat.size());
+					int[] givenPositions = Randoms.nextIntArray(numTests, groupRat.size()-1);
 					int testPosition = 0;
 					int ratingPosition = 0;
 					for (Integer item : groupRat) {
+						if (testPosition == givenPositions.length) {
+							break;
+						}
 						if (givenPositions[testPosition] == ratingPosition) {
 							testGroupRating.get(group).add(item);
 							testPosition++;
