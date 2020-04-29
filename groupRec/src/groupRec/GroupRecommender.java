@@ -3,6 +3,7 @@
  */
 package groupRec;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,6 +13,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
+
+import com.google.common.collect.BiMap;
+
 import net.librec.common.LibrecException;
 import net.librec.data.structure.AbstractBaseDataEntry;
 import net.librec.data.structure.LibrecDataList;
@@ -20,16 +25,20 @@ import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.recommender.AbstractRecommender;
 import net.librec.recommender.Recommender;
-import net.librec.recommender.RecommenderContext;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.item.ContextKeyValueEntry;
+import net.librec.recommender.item.GenericRecommendedItem;
+import net.librec.recommender.item.RecommendedItem;
 import net.librec.recommender.item.RecommendedList;
+import net.librec.util.DriverClassUtil;
+import net.librec.util.ReflectionUtil;
 
 /**
  * @author Joaqui This class will be in charge of the abstraction of the
  *         recommendation variants for the groups
  */
-public class GroupRecommender extends AbstractRecommender {
+public abstract class GroupRecommender extends AbstractRecommender {
+//	TODO: Verify if I'm still using all this parameters
 	/**
 	 * trainMatrix
 	 */
@@ -76,11 +85,33 @@ public class GroupRecommender extends AbstractRecommender {
 	protected static List<Double> ratingScale;
 
 	protected Recommender baseRecommender;
+	
+	/**
+     * Get recommender class. {@code Recommender}.
+     *
+     * @return recommender class object
+     * @throws ClassNotFoundException if can't find the class of recommender
+     * @throws IOException            If an I/O error occurs.
+     */
+    @SuppressWarnings("unchecked")
+    public Class<? extends Recommender> getBaseRecommenderClass() throws ClassNotFoundException, IOException {
+//    	TODO: Add this to the configuration list of parameters
+        return (Class<? extends Recommender>) DriverClassUtil.getClass(conf.get("group.base.recommender.class"));
+    }
 
+    @SuppressWarnings("unchecked")
 	@Override
 	protected void setup() throws LibrecException {
 		super.setup();
-		this.baseRecommender = new ItemKNNRecommender();
+//		TODO: Decide if this should be here or in the job (If I put it in the Job I need to make a special job for the group recommenders)
+		try {
+			Recommender baseRecom = ReflectionUtil.newInstance((Class<Recommender>) getBaseRecommenderClass(), conf);
+			this.baseRecommender = baseRecom;
+		} catch (ClassNotFoundException | IOException e) {
+			this.baseRecommender = new ItemKNNRecommender();
+			e.printStackTrace();
+		}
+		
 		this.baseRecommender.setContext(this.getContext());
 		trainMatrix = (SequentialAccessSparseMatrix) getDataModel().getTrainDataSet();
 		testMatrix = (SequentialAccessSparseMatrix) getDataModel().getTestDataSet();
@@ -145,11 +176,7 @@ public class GroupRecommender extends AbstractRecommender {
 	}
 	
 	
-//	TODO: this should be an abstract method that the different implementations of the GroupRecommender should implement
-	protected Double groupModeling(List<Double> groupScores) {
-//		TODO: Need to implement other group models, not only avg
-		return groupScores.stream().mapToDouble(a -> a).average().getAsDouble();
-	}
+	abstract protected Double groupModeling(List<Double> groupScores);
 
 	@Override
 	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
@@ -167,21 +194,43 @@ public class GroupRecommender extends AbstractRecommender {
 
 	@Override
 	public RecommendedList recommendRank() throws LibrecException {
-		// TODO Auto-generated method stub
+		// TODO Implement ranking
 		return null;
 	}
 
 	@Override
 	public RecommendedList recommendRank(LibrecDataList<AbstractBaseDataEntry> dataList) throws LibrecException {
-		// TODO Auto-generated method stub
+		// TODO Implement ranking
 		return null;
 	}
 
 	@Override
 	protected void trainModel() throws LibrecException {
-		// TODO Auto-generated method stub
 		this.baseRecommender.train(getContext());
 
+	}
+	
+	@Override
+	public List<RecommendedItem> getRecommendedList(RecommendedList recommendedList) {
+        if (recommendedList != null && recommendedList.size() > 0) {
+            List<RecommendedItem> groupItemList = new ArrayList<>();
+            Iterator<ContextKeyValueEntry> recommendedEntryIter = recommendedList.iterator();
+            if (itemMappingData != null && itemMappingData.size() > 0) {
+                BiMap<Integer, String> itemMappingInverse = itemMappingData.inverse();
+                while (recommendedEntryIter.hasNext()) {
+                    ContextKeyValueEntry contextKeyValueEntry = recommendedEntryIter.next();
+                    if (contextKeyValueEntry != null) {
+                        String groupId = Integer.toString(contextKeyValueEntry.getContextIdx());
+                        String itemId = itemMappingInverse.get(contextKeyValueEntry.getKey());
+                        if (StringUtils.isNotBlank(groupId) && StringUtils.isNotBlank(itemId)) {
+                            groupItemList.add(new GenericRecommendedItem(groupId, itemId, contextKeyValueEntry.getValue()));
+                        }
+                    }
+                }
+                return groupItemList;
+            }
+        }
+        return null;
 	}
 
 }

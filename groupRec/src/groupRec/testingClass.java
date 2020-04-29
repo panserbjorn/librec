@@ -6,6 +6,7 @@ package groupRec;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.BiMap;
 import com.google.common.collect.Table;
 
 import net.librec.common.LibrecException;
@@ -13,6 +14,8 @@ import net.librec.conf.Configuration;
 import net.librec.conf.Configuration.Resource;
 import net.librec.data.DataModel;
 import net.librec.data.model.TextDataModel;
+import net.librec.data.splitter.KCVDataSplitter;
+import net.librec.data.splitter.LOOCVDataSplitter;
 import net.librec.eval.EvalContext;
 import net.librec.eval.RecommenderEvaluator;
 import net.librec.eval.ranking.NormalizedDCGEvaluator;
@@ -25,10 +28,13 @@ import net.librec.recommender.Recommender;
 import net.librec.recommender.RecommenderContext;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.cf.ranking.BPRRecommender;
+import net.librec.recommender.item.RecommendedItem;
 import net.librec.recommender.item.RecommendedList;
 import net.librec.similarity.CosineSimilarity;
 import net.librec.similarity.PCCSimilarity;
 import net.librec.similarity.RecommenderSimilarity;
+import net.librec.util.DriverClassUtil;
+import net.librec.util.FileUtil;
 
 /**
  * @author Joaqui
@@ -353,21 +359,69 @@ public class testingClass {
 
 		GroupDataModel dataModel = new GroupDataModel(conf);
 		dataModel.buildDataModel();
-		
+
 		RecommenderContext reccontext = new RecommenderContext(conf, dataModel);
 
 		RecommenderSimilarity similarity = new CosineSimilarity();
 		similarity.buildSimilarityMatrix(dataModel);
 		reccontext.setSimilarity(similarity);
-		
-		GroupRecommender rec = new GroupRecommender();
+
+		GroupRecommender rec = new AdditiveUtilitarianRecommender();
 		rec.setContext(reccontext);
 
 		rec.train(reccontext);
-		
+
 		RecommendedList groupRecommendations = rec.recommendRating(dataModel.getTestDataSet());
-		
+
+		saveResult(rec.getRecommendedList(groupRecommendations));
+		saveGroups(dataModel.getGroupAssignation(), dataModel.getUserMappingData());
+
 		System.out.println(groupRecommendations.size());
+
+	}
+
+//	TODO This method should be in the recommender job/driver
+	static void saveGroups(Map<Integer, Integer> groupAssignation, BiMap<String,Integer> userMapping) {
+		String outputPath = "./results/GroupAssignation.csv";
+		System.out.println("Result path is " + outputPath);
+		BiMap<Integer, String> inverseUserMapping = userMapping.inverse();
+		// convert itemList to string
+		StringBuilder sb = new StringBuilder();
+		for (Integer userID : groupAssignation.keySet()) {
+			String userId = inverseUserMapping.get(userID);	
+			String groupId = Integer.toString(groupAssignation.get(userID));
+			sb.append(userId).append(",").append(groupId).append("\n");
+		}
+		String resultData = sb.toString();
+		// save resultData
+		try {
+			FileUtil.writeString(outputPath, resultData);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+//	TODO This method should be in the recommender job/driver
+	static void saveResult(List<RecommendedItem> recommendedList) {
+		if (recommendedList != null && recommendedList.size() > 0) {
+			String outputPath = "./results/GroupRec.csv";
+			System.out.println("Result path is " + outputPath);
+			// convert itemList to string
+			StringBuilder sb = new StringBuilder();
+			for (RecommendedItem recItem : recommendedList) {
+				String groupId = recItem.getUserId();
+				String itemId = recItem.getItemId();
+				String value = String.valueOf(recItem.getValue());
+				sb.append(groupId).append(",").append(itemId).append(",").append(value).append("\n");
+			}
+			String resultData = sb.toString();
+			// save resultData
+			try {
+				FileUtil.writeString(outputPath, resultData);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 }
