@@ -351,18 +351,9 @@ public class testingClass {
 	}
 
 	static void groupNewExample() throws LibrecException {
-		Configuration conf = new Configuration();
-
-//		TODO: put all this configurations inside a configuration file
-		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
-		conf.set("rec.recommender.similarity.key", "item");
-		conf.set("rec.neighbors.knn.number", "10");
-		conf.set("group.base.recommender.class", "itemknn");
-		conf.setBoolean("group.save", true);
-		conf.set("dfs.result.dir", "../group_result");
-		conf.setDouble("group.test.item.ratio", 0.05);
-		conf.setInt("group.number", 20);
-		conf.setInt("kmeans.iterations", 30);
+		Configuration conf = new Configuration(false);
+		Resource resource = new Resource("group.properties");
+		conf.addResource(resource);
 
 		GroupDataModel dataModel = new GroupDataModel(conf);
 		dataModel.buildDataModel();
