@@ -27,7 +27,7 @@ import net.librec.util.FileUtil;
 public class GroupDataModel extends AbstractDataModel {
 
 	private Map<Integer, Integer> Groupassignation;
-	private Map<Integer,List<Integer>> Groups;
+	private Map<Integer, List<Integer>> Groups;
 	private int NumberOfGroups;
 
 	/**
@@ -39,17 +39,17 @@ public class GroupDataModel extends AbstractDataModel {
 	public GroupDataModel(Configuration conf) {
 		this.conf = conf;
 	}
-	
+
 	void saveGroups() {
-		Map<Integer,Integer> groupAssignation = this.getGroupAssignation();
-		BiMap<String,Integer> userMapping = this.getUserMappingData();
+		Map<Integer, Integer> groupAssignation = this.getGroupAssignation();
+		BiMap<String, Integer> userMapping = this.getUserMappingData();
 		String outputPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/groupAssignation.csv";
 		System.out.println("Result path is " + outputPath);
 		BiMap<Integer, String> inverseUserMapping = userMapping.inverse();
 		// convert itemList to string
 		StringBuilder sb = new StringBuilder();
 		for (Integer userID : groupAssignation.keySet()) {
-			String userId = inverseUserMapping.get(userID);	
+			String userId = inverseUserMapping.get(userID);
 			String groupId = Integer.toString(groupAssignation.get(userID));
 			sb.append(userId).append(",").append(groupId).append("\n");
 		}
@@ -76,15 +76,18 @@ public class GroupDataModel extends AbstractDataModel {
 			if (!conf.getBoolean("group.external", false)) {
 				DataFrame rawData = dataConvertor.getMatrix();
 				SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
+//				TODO: Add this to the configuration list of parameters
 				this.NumberOfGroups = this.conf.getInt("group.number", 10);
+				int maxIterations = this.conf.getInt("kmeans.iterations", 30);
 				Kmeans groupBuilder = new Kmeans(this.NumberOfGroups, rawData.getRatingScale().get(0),
-						rawData.getRatingScale().get(rawData.getRatingScale().size() - 1), preferenceMatrix);
+						rawData.getRatingScale().get(rawData.getRatingScale().size() - 1), preferenceMatrix,
+						maxIterations);
 				groupBuilder.init();
 				groupBuilder.calculate();
 				this.Groupassignation = groupBuilder.getAssignation();
 				this.Groups = groupBuilder.getGroupMapping();
-//				TODO: Should I save the groups here?
-				if (conf.getBoolean("group.save",false)) {
+//				TODO: Should I save the groups here or in the job?
+				if (conf.getBoolean("group.save", false)) {
 					this.saveGroups();
 				}
 			} else {
@@ -143,17 +146,16 @@ public class GroupDataModel extends AbstractDataModel {
 	public Map<Integer, List<Integer>> getGroups() {
 		return this.Groups;
 	}
-	
-	
+
 	@Override
 	protected void buildSplitter() throws LibrecException {
-		dataSplitter = new GroupDataSplitter(this.Groupassignation,this.Groups);
-		
-        dataSplitter.setDataConvertor(dataConvertor);
-        dataSplitter.splitData();
-        trainDataSet = dataSplitter.getTrainData();
-        testDataSet = dataSplitter.getTestData();
-        
+		dataSplitter = new GroupDataSplitter(this.Groupassignation, this.Groups, conf);
+
+		dataSplitter.setDataConvertor(dataConvertor);
+		dataSplitter.splitData();
+		trainDataSet = dataSplitter.getTrainData();
+		testDataSet = dataSplitter.getTestData();
+
 //		super.buildSplitter();
 	}
 

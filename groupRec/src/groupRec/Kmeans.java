@@ -40,12 +40,12 @@ public class Kmeans {
 
 	private SequentialAccessSparseMatrix sparceMatrix;
 
-	private CosineSimilarity sim = new CosineSimilarity();
 
 	private List<Cluster> clusters;
 
-	public Kmeans( int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix) {
+	public Kmeans(int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix, int maxIterations) {
 		super();
+		MAX_ITERATION = maxIterations;
 		NUM_CLUSTERS = nUM_CLUSTERS;
 		MIN_RATING = mIN_RATING;
 		MAX_RATING = mAX_RATING;

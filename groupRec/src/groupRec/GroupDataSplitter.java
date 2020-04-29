@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import net.librec.common.LibrecException;
+import net.librec.conf.Configuration;
 import net.librec.data.DataConvertor;
 import net.librec.data.DataSplitter;
 import net.librec.data.splitter.AbstractDataSplitter;
@@ -27,7 +28,8 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 
 	private Map<Integer, List<Integer>> groups;
 
-	public GroupDataSplitter(Map<Integer, Integer> groupAssignation, Map<Integer, List<Integer>> groups) {
+	public GroupDataSplitter(Map<Integer, Integer> groupAssignation, Map<Integer, List<Integer>> groups, Configuration conf) {
+		this.conf = conf;
 		this.groupAssignation = groupAssignation;
 		this.groups = groups;
 	}
@@ -57,8 +59,7 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 		for (Integer group : groups.keySet()) {
 			testGroupRating.put(group, new HashSet<Integer>());
 			Set<Integer> groupRat = groupRatings.get(group);
-//			TODO: this percentage of ratings of the group should be specified in configuration file
-			double percentageOfGroupRatingForTest = 0.05;
+			double percentageOfGroupRatingForTest = conf.getDouble("group.test.item.ratio", 0.05);
 			int numTests = (int) Math.round(groupRat.size() * percentageOfGroupRatingForTest);
 			if (numTests > 0) {
 				try {

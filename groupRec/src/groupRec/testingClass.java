@@ -353,9 +353,16 @@ public class testingClass {
 	static void groupNewExample() throws LibrecException {
 		Configuration conf = new Configuration();
 
+//		TODO: put all this configurations inside a configuration file
 		conf.set("dfs.data.dir", "C:/Users/Joaqui/GroupLibRec/librec/data");
 		conf.set("rec.recommender.similarity.key", "item");
 		conf.set("rec.neighbors.knn.number", "10");
+		conf.set("group.base.recommender.class", "itemknn");
+		conf.setBoolean("group.save", true);
+		conf.set("dfs.result.dir", "../group_result");
+		conf.setDouble("group.test.item.ratio", 0.05);
+		conf.setInt("group.number", 20);
+		conf.setInt("kmeans.iterations", 30);
 
 		GroupDataModel dataModel = new GroupDataModel(conf);
 		dataModel.buildDataModel();
@@ -373,38 +380,38 @@ public class testingClass {
 
 		RecommendedList groupRecommendations = rec.recommendRating(dataModel.getTestDataSet());
 
-		saveResult(rec.getRecommendedList(groupRecommendations));
-		saveGroups(dataModel.getGroupAssignation(), dataModel.getUserMappingData());
+		saveResult(rec.getRecommendedList(groupRecommendations), conf);
+//		saveGroups(dataModel.getGroupAssignation(), dataModel.getUserMappingData());
 
 		System.out.println(groupRecommendations.size());
 
 	}
 
-//	TODO This method should be in the recommender job/driver
-	static void saveGroups(Map<Integer, Integer> groupAssignation, BiMap<String,Integer> userMapping) {
-		String outputPath = "./results/GroupAssignation.csv";
-		System.out.println("Result path is " + outputPath);
-		BiMap<Integer, String> inverseUserMapping = userMapping.inverse();
-		// convert itemList to string
-		StringBuilder sb = new StringBuilder();
-		for (Integer userID : groupAssignation.keySet()) {
-			String userId = inverseUserMapping.get(userID);	
-			String groupId = Integer.toString(groupAssignation.get(userID));
-			sb.append(userId).append(",").append(groupId).append("\n");
-		}
-		String resultData = sb.toString();
-		// save resultData
-		try {
-			FileUtil.writeString(outputPath, resultData);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+//	NOT NEEDED: THE GROUPDATAMODEL SAVES THE GROUPS IF THEY ARE GENERATED
+//	static void saveGroups(Map<Integer, Integer> groupAssignation, BiMap<String,Integer> userMapping) {
+//		String outputPath = "./results/GroupAssignation.csv";
+//		System.out.println("Result path is " + outputPath);
+//		BiMap<Integer, String> inverseUserMapping = userMapping.inverse();
+//		// convert itemList to string
+//		StringBuilder sb = new StringBuilder();
+//		for (Integer userID : groupAssignation.keySet()) {
+//			String userId = inverseUserMapping.get(userID);	
+//			String groupId = Integer.toString(groupAssignation.get(userID));
+//			sb.append(userId).append(",").append(groupId).append("\n");
+//		}
+//		String resultData = sb.toString();
+//		// save resultData
+//		try {
+//			FileUtil.writeString(outputPath, resultData);
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
 
 //	TODO This method should be in the recommender job/driver
-	static void saveResult(List<RecommendedItem> recommendedList) {
+	static void saveResult(List<RecommendedItem> recommendedList, Configuration conf) {
 		if (recommendedList != null && recommendedList.size() > 0) {
-			String outputPath = "./results/GroupRec.csv";
+			String outputPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/GroupRec.csv";
 			System.out.println("Result path is " + outputPath);
 			// convert itemList to string
 			StringBuilder sb = new StringBuilder();
