@@ -1,7 +1,7 @@
 /**
  * 
  */
-package groupRec;
+package net.librec.group;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -43,7 +43,7 @@ public class GroupDataRetriever {
 	}
 
 	public void process() {
-//		TODO terminar este método
+//		TODO terminar este mï¿½todo
 		String line = "";
 		try {
 			br = new BufferedReader(new FileReader(this.path));

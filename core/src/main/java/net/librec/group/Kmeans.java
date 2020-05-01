@@ -1,27 +1,18 @@
 /**
  * 
  */
-package groupRec;
+package net.librec.group;
 
-import java.awt.event.ItemListener;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import javax.sound.midi.Sequence;
-
-import net.librec.conf.Configuration;
-//import net.librec.math.structure.SequentialSparceVector;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.math.structure.VectorBasedSequentialSparseVector;
-import net.librec.similarity.CosineSimilarity;
-import net.librec.similarity.MSESimilarity;
-import net.librec.similarity.PCCSimilarity;
 
 /**
  * @author Joaqui

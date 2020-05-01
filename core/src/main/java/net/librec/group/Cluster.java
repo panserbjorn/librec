@@ -1,7 +1,7 @@
 /**
  * 
  */
-package groupRec;
+package net.librec.group;
 
 import java.util.ArrayList;
 import java.util.HashMap;

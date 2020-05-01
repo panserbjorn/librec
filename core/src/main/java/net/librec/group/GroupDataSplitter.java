@@ -1,7 +1,7 @@
 /**
  * 
  */
-package groupRec;
+package net.librec.group;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,8 +11,6 @@ import java.util.Set;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
-import net.librec.data.DataConvertor;
-import net.librec.data.DataSplitter;
 import net.librec.data.splitter.AbstractDataSplitter;
 import net.librec.math.algorithm.Randoms;
 import net.librec.math.structure.MatrixEntry;

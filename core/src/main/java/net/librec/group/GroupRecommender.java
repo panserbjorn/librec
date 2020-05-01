@@ -1,7 +1,7 @@
 /**
  * 
  */
-package groupRec;
+package net.librec.group;
 
 import java.io.IOException;
 import java.util.ArrayList;
