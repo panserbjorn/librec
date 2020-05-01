@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
@@ -28,6 +29,7 @@ public class GroupDataModel extends AbstractDataModel {
 
 	private Map<Integer, Integer> Groupassignation;
 	private Map<Integer, List<Integer>> Groups;
+	private BiMap<String, Integer> groupMapping;
 	private int NumberOfGroups;
 
 	/**
@@ -38,19 +40,26 @@ public class GroupDataModel extends AbstractDataModel {
 
 	public GroupDataModel(Configuration conf) {
 		this.conf = conf;
+		this.groupMapping = HashBiMap.create();
+	}
+	
+	public BiMap<String,Integer> getGroupMappingdata(){
+		return this.groupMapping;
 	}
 
 	void saveGroups() {
 		Map<Integer, Integer> groupAssignation = this.getGroupAssignation();
 		BiMap<String, Integer> userMapping = this.getUserMappingData();
+		BiMap<String, Integer> groupMapping = this.getGroupMappingdata();
 		String outputPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/groupAssignation.csv";
 		System.out.println("Result path is " + outputPath);
 		BiMap<Integer, String> inverseUserMapping = userMapping.inverse();
+		BiMap<Integer, String> inverseGroupMapping = groupMapping.inverse();
 		// convert itemList to string
 		StringBuilder sb = new StringBuilder();
 		for (Integer userID : groupAssignation.keySet()) {
 			String userId = inverseUserMapping.get(userID);
-			String groupId = Integer.toString(groupAssignation.get(userID));
+			String groupId = inverseGroupMapping.get(groupAssignation.get(userID));
 			sb.append(userId).append(",").append(groupId).append("\n");
 		}
 		String resultData = sb.toString();
@@ -86,14 +95,22 @@ public class GroupDataModel extends AbstractDataModel {
 				groupBuilder.calculate();
 				this.Groupassignation = groupBuilder.getAssignation();
 				this.Groups = groupBuilder.getGroupMapping();
+//				Build the groupMapping data
+				for (Integer group : this.Groups.keySet()) {
+					this.groupMapping.put(Integer.toString(group), group);
+				}
 //				TODO: Should I save the groups here or in the job?
 				if (conf.getBoolean("group.save", false)) {
 					this.saveGroups();
 				}
 			} else {
-//				TODO: Here I need to get the groups from the external file
 //				TODO: Add this to the configuration list of parameters
 				String groupAssignationPath = conf.get("group.external.path");
+				GroupDataRetriever retriever = new GroupDataRetriever(groupAssignationPath);
+				retriever.process();
+				this.groupMapping = retriever.getGroupMapping();
+				this.Groups = retriever.getGroups();
+				this.Groupassignation = retriever.getGroupAssignation();
 			}
 			LOG.info("Groups Built sucessfully:");
 			for (Integer group : this.Groups.keySet()) {
