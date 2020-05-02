@@ -36,6 +36,7 @@ public class GroupDataModel extends AbstractDataModel {
 	 * Empty constructor.
 	 */
 	public GroupDataModel() {
+		this.groupMapping = HashBiMap.create();
 	}
 
 	public GroupDataModel(Configuration conf) {

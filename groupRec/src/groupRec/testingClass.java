@@ -3,6 +3,7 @@
  */
 package groupRec;
 
+import java.io.IOException;
 import java.util.List;
 import com.google.common.collect.Table;
 
@@ -19,6 +20,7 @@ import net.librec.eval.rating.RMSEEvaluator;
 import net.librec.group.AdditiveUtilitarianRecommender;
 import net.librec.group.GroupDataModel;
 import net.librec.group.GroupRecommender;
+import net.librec.job.RecommenderJob;
 import net.librec.math.algorithm.Randoms;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
@@ -31,6 +33,7 @@ import net.librec.recommender.item.RecommendedList;
 import net.librec.similarity.CosineSimilarity;
 import net.librec.similarity.PCCSimilarity;
 import net.librec.similarity.RecommenderSimilarity;
+import net.librec.tool.driver.RecDriver;
 import net.librec.util.FileUtil;
 
 /**
@@ -41,9 +44,9 @@ public class testingClass {
 
 	/**
 	 * @param args
-	 * @throws LibrecException
+	 * @throws Exception 
 	 */
-	public static void main(String[] args) throws LibrecException {
+	public static void main(String[] args) throws Exception {
 		System.out.println("Running examples for single recommender systems");
 
 //		The first example uses the movieLens 100-k with a KNN item recommender
@@ -58,7 +61,8 @@ public class testingClass {
 //		fifthExample();
 //		groupExample();
 //		fillSpareceMatrixExample();
-		groupNewExample();
+//		groupNewExample();
+		driverTest();
 
 		System.out.println("This should have ended");
 
@@ -374,6 +378,21 @@ public class testingClass {
 
 		System.out.println(groupRecommendations.size());
 
+	}
+	
+	static void driverTest() throws Exception {
+//		Resource resource = new Resource("group.properties");
+//		Configuration conf = new Configuration(false);
+//		conf.addResource(resource);
+//		RecommenderJob job = new RecommenderJob(conf);
+//		job.runJob();
+		
+		RecDriver drive = new RecDriver();
+		String[] args = new String[3];
+		args[0] = "-exec";
+		args[1] = "-conf";
+		args[2] = "..\\core\\target\\classes\\group.properties";
+		drive.run(args);
 	}
 
 //	TODO This method should be in the recommender job/driver
