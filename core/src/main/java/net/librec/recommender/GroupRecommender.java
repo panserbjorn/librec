@@ -30,6 +30,7 @@ import net.librec.recommender.item.GenericRecommendedItem;
 import net.librec.recommender.item.RecommendedItem;
 import net.librec.recommender.item.RecommendedList;
 import net.librec.util.DriverClassUtil;
+import net.librec.util.Lists;
 import net.librec.util.ReflectionUtil;
 
 /**
@@ -193,14 +194,18 @@ public abstract class GroupRecommender extends AbstractRecommender {
 
 	@Override
 	public RecommendedList recommendRank() throws LibrecException {
-		// TODO Implement ranking
-		return null;
+		RecommendedList individualRecommendations = this.baseRecommender.recommendRank();
+		RecommendedList groupRecommendations = this.buildGroupRecommendations(individualRecommendations);
+		groupRecommendations.topNRank(topN);
+		return groupRecommendations;
 	}
 
 	@Override
 	public RecommendedList recommendRank(LibrecDataList<AbstractBaseDataEntry> dataList) throws LibrecException {
-		// TODO Implement ranking
-		return null;
+		RecommendedList individualRecommendations = this.baseRecommender.recommendRank(dataList);
+		RecommendedList groupRecommendations = this.buildGroupRecommendations(individualRecommendations);
+		groupRecommendations.topNRank(topN);
+		return groupRecommendations;
 	}
 
 	@Override
