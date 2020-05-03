@@ -24,6 +24,7 @@ import net.librec.data.structure.LibrecDataList;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
+import net.librec.math.structure.SequentialSparseVector;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.item.ContextKeyValueEntry;
 import net.librec.recommender.item.GenericRecommendedItem;
@@ -138,7 +139,7 @@ public abstract class GroupRecommender extends AbstractRecommender {
 		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
 
-//        Aggregate the group ratings in structure
+//      Aggregate the group ratings in structure
 //		TODO This might fail if there are groups that don't have anything inside the test set
 		Map<Integer, Map<Integer, List<Double>>> groupRatings = new HashMap<Integer, Map<Integer, List<Double>>>();
 		for (Integer group : groups.keySet()) {
@@ -156,6 +157,22 @@ public abstract class GroupRecommender extends AbstractRecommender {
 					currentGroupRatings.put(itemId, new ArrayList<Double>());
 				}
 				currentGroupRatings.get(itemId).add(value);
+			}
+		}
+		
+//		Retrieve data from training if any
+		for (int group = 0; group < groups.size(); group++) {
+			Set<Integer> items = groupRatings.get(group).keySet();
+			for (Integer item : items) {
+				SequentialSparseVector column = this.trainMatrix.column(item);
+				int[] indices = column.getIndices();
+				List<Integer> groupUsers = groups.get(group);
+				for (int i = 0; i < indices.length; i++) {
+					int userRated = indices[i];
+					if (groupUsers.contains(userRated)) {
+						groupRatings.get(group).get(item).add(column.getAtPosition(i));
+					}
+				}
 			}
 		}
 
