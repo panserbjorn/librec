@@ -133,7 +133,7 @@ rmse=net.librec.eval.rating.RMSEEvaluator
 #Filter(-filter)
 generic=net.librec.filter.GenericRecommendedFilter
 #Group
-addut=net.librec.group.AdditiveUtilitarianRecommender
-leastmis=net.librec.group.LeastMiseryRecommender
-mostpleasure=net.librec.group.MostPleasureRecommender
-groupModel=net.librec.group.GroupDataModel
+addut=net.librec.recommender.group.AdditiveUtilitarianRecommender
+leastmis=net.librec.recommender.group.LeastMiseryRecommender
+mostpleasure=net.librec.recommender.group.MostPleasureRecommender
+groupModel=net.librec.data.model.GroupDataModel

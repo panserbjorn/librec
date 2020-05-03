@@ -1,9 +1,11 @@
 /**
  * 
  */
-package net.librec.group;
+package net.librec.recommender.group;
 
 import java.util.List;
+
+import net.librec.recommender.GroupRecommender;
 
 /**
  * @author Joaqui

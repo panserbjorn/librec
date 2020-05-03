@@ -1,7 +1,7 @@
 /**
  * 
  */
-package net.librec.group;
+package net.librec.data.model;
 
 import java.util.ArrayList;
 import java.util.Collections;

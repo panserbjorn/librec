@@ -1,7 +1,7 @@
 /**
  * 
  */
-package net.librec.group;
+package net.librec.data.splitter;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +11,6 @@ import java.util.Set;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
-import net.librec.data.splitter.AbstractDataSplitter;
 import net.librec.math.algorithm.Randoms;
 import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;

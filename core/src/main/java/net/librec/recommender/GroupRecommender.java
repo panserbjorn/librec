@@ -1,7 +1,7 @@
 /**
  * 
  */
-package net.librec.group;
+package net.librec.recommender;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,13 +18,12 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.collect.BiMap;
 
 import net.librec.common.LibrecException;
+import net.librec.data.model.GroupDataModel;
 import net.librec.data.structure.AbstractBaseDataEntry;
 import net.librec.data.structure.LibrecDataList;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
-import net.librec.recommender.AbstractRecommender;
-import net.librec.recommender.Recommender;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.item.ContextKeyValueEntry;
 import net.librec.recommender.item.GenericRecommendedItem;

@@ -1,7 +1,7 @@
 /**
  * 
  */
-package net.librec.group;
+package net.librec.data.model;
 
 import java.io.IOException;
 import java.util.List;
@@ -13,8 +13,9 @@ import com.google.common.collect.HashBiMap;
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configured;
+import net.librec.data.convertor.GroupDataRetriever;
 import net.librec.data.convertor.TextDataConvertor;
-import net.librec.data.model.AbstractDataModel;
+import net.librec.data.splitter.GroupDataSplitter;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;

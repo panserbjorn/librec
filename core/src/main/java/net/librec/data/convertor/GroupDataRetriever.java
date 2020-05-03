@@ -1,7 +1,7 @@
 /**
  * 
  */
-package net.librec.group;
+package net.librec.data.convertor;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
