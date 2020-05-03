@@ -101,7 +101,6 @@ public class GroupDataModel extends AbstractDataModel {
 				for (Integer group : this.Groups.keySet()) {
 					this.groupMapping.put(Integer.toString(group), group);
 				}
-//				TODO: Should I save the groups here or in the job?
 				if (conf.getBoolean("group.save", false)) {
 					this.saveGroups();
 				}

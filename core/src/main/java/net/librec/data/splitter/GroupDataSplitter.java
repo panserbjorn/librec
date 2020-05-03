@@ -36,7 +36,6 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 		if (null == this.preferenceMatrix) {
 			this.preferenceMatrix = dataConvertor.getPreferenceMatrix(conf);
 		}
-//		double ratio = Double.parseDouble(conf.get("data.splitter.trainset.ratio"));
 		trainMatrix = new SequentialAccessSparseMatrix(preferenceMatrix);
 		testMatrix = new SequentialAccessSparseMatrix(preferenceMatrix);
 
@@ -51,7 +50,7 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 			groupRatings.get(groupAssignation.get(matrixEntry.row())).add(matrixEntry.column());
 		}
 
-//		Determine the items that will be set to test (currently 5% of the items in each group)
+//		Determine the items that will be set to test
 		Map<Integer, Set<Integer>> testGroupRating = new HashMap<Integer, Set<Integer>>();
 		for (Integer group : groups.keySet()) {
 			testGroupRating.put(group, new HashSet<Integer>());
@@ -74,7 +73,6 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 						ratingPosition++;
 					}
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -89,7 +87,6 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 			}
 		}
 
-//		TODO: Need to set to 0 the ratings that I want to put in test in the train matrix and vice versa
 		/*
 		 * Procedure: For each group: Determine the items that at least 70% of the
 		 * groups has rated If the items account for less than 40% of the user that has
@@ -101,7 +98,7 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 		 * percentage of the ratings of the group only in the test set. (to be
 		 * discussed)
 		 * 
-		 * Procedure (2): For each group determine the number of items rated by the
+		 * DONE - Procedure (2): For each group determine the number of items rated by the
 		 * group (it can be rated by any member or it can be items rated by a certain
 		 * number of members) Choose randomly a percentage of those items (5%, 10%; it
 		 * might depend on the size of the groups) Set those items as test item for the

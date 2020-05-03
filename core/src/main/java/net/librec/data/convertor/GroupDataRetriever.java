@@ -43,12 +43,10 @@ public class GroupDataRetriever {
 	}
 
 	public void process() {
-//		TODO terminar este m�todo
 		String line = "";
 		try {
 			br = new BufferedReader(new FileReader(this.path));
 			while ((line = br.readLine()) != null) {
-//				TODO the splitting could be in the configuration. 
 				String[] splitted = line.split(",");
 				String user = splitted[0];
 				String group = splitted[1];
@@ -65,7 +63,6 @@ public class GroupDataRetriever {
 				getGroupAssignation().put(userMap, groupMap);
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
