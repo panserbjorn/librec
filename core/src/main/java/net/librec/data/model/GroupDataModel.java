@@ -44,8 +44,8 @@ public class GroupDataModel extends AbstractDataModel {
 		this.conf = conf;
 		this.groupMapping = HashBiMap.create();
 	}
-	
-	public BiMap<String,Integer> getGroupMappingdata(){
+
+	public BiMap<String, Integer> getGroupMappingdata() {
 		return this.groupMapping;
 	}
 
@@ -171,10 +171,38 @@ public class GroupDataModel extends AbstractDataModel {
 
 		dataSplitter.setDataConvertor(dataConvertor);
 		dataSplitter.splitData();
+//		TODO this will be the individual train and test data sets
 		trainDataSet = dataSplitter.getTrainData();
 		testDataSet = dataSplitter.getTestData();
+//		TODO Will have to generate group train and test data sets so that when the 
 
-//		super.buildSplitter();
+	}
+
+	public Double getGroupRating(List<Double> groupScores) {
+		String model = conf.get("data.group.model", "addUtil");
+		switch (model) {
+		case "addUtil":
+			return AdditiveUtilitarian(groupScores);
+		case "leastMis":
+			return LeastMisery(groupScores);
+		case "mostPl":
+			return MostPleasure(groupScores);
+		default:
+//			TODO Should rise an exception here
+			return 0.0D;
+		}
+	}
+
+	private static Double AdditiveUtilitarian(List<Double> groupScores) {
+		return groupScores.stream().mapToDouble(a -> a).average().getAsDouble();
+	}
+
+	private static Double LeastMisery(List<Double> groupScores) {
+		return groupScores.stream().mapToDouble(a -> a).min().getAsDouble();
+	}
+	
+	private static Double MostPleasure(List<Double> groupScores) {
+		return groupScores.stream().mapToDouble(a->a).max().getAsDouble();
 	}
 
 }

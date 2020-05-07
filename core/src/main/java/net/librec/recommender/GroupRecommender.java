@@ -179,12 +179,12 @@ public abstract class GroupRecommender extends AbstractRecommender {
 		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
 
 //		TODO I could parallelize this so that it is FAR more efficient
-//		TODO This method only works if all the ratings for the group are in the test. Otherwise I would have to join the predictions for the test and the train ratings of the group
 		for (int group = 0; group < groups.size(); group++) {
 			recommendedList.addList(new ArrayList<>());
 			for (Integer item : groupRatings.get(group).keySet()) {
 				List<Double> groupScores = groupRatings.get(group).get(item);
-				recommendedList.add(group, item, groupModeling(groupScores));
+				Double groupRating = ((GroupDataModel) this.getDataModel()).getGroupRating(groupScores);
+				recommendedList.add(group, item, groupRating);
 			}
 		}
 
@@ -192,8 +192,6 @@ public abstract class GroupRecommender extends AbstractRecommender {
 
 	}
 	
-	
-	abstract protected Double groupModeling(List<Double> groupScores);
 
 	@Override
 	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
