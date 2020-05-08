@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -38,7 +39,7 @@ import net.librec.util.ReflectionUtil;
  * @author Joaqui This class will be in charge of the abstraction of the
  *         recommendation variants for the groups
  */
-public abstract class GroupRecommender extends AbstractRecommender {
+public class GroupRecommender extends AbstractRecommender {
 //	TODO: Verify if I'm still using all this parameters
 	/**
 	 * trainMatrix
@@ -104,7 +105,6 @@ public abstract class GroupRecommender extends AbstractRecommender {
 	@Override
 	protected void setup() throws LibrecException {
 		super.setup();
-//		TODO: Decide if this should be here or in the job (If I put it in the Job I need to make a special job for the group recommenders)
 		try {
 			Recommender baseRecom = ReflectionUtil.newInstance((Class<Recommender>) getBaseRecommenderClass(), conf);
 			this.baseRecommender = baseRecom;
@@ -181,7 +181,8 @@ public abstract class GroupRecommender extends AbstractRecommender {
 //		TODO I could parallelize this so that it is FAR more efficient
 		for (int group = 0; group < groups.size(); group++) {
 			recommendedList.addList(new ArrayList<>());
-			for (Integer item : groupRatings.get(group).keySet()) {
+			List<Integer> sortedItemList = groupRatings.get(group).keySet().stream().sorted().collect(Collectors.toList());
+			for (Integer item : sortedItemList) {
 				List<Double> groupScores = groupRatings.get(group).get(item);
 				Double groupRating = ((GroupDataModel) this.getDataModel()).getGroupRating(groupScores);
 				recommendedList.add(group, item, groupRating);

@@ -2,6 +2,7 @@ package net.librec.eval;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
+import net.librec.data.model.GroupDataModel;
 import net.librec.math.structure.*;
 import net.librec.recommender.Recommender;
 import net.librec.recommender.TensorRecommender;
@@ -10,7 +11,12 @@ import net.librec.recommender.item.RecommendedList;
 import net.librec.similarity.RecommenderSimilarity;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.google.common.collect.Table;
+import com.google.common.collect.Table.Cell;
 
 /**
  * Evaluator Context
@@ -73,18 +79,37 @@ public class EvalContext {
      * @return the test set ground truth list
      */
     public RecommendedList getGroundTruthListFromSparseMatrix(SequentialAccessSparseMatrix testMatrix) {
-        int numUsers = testMatrix.rowSize();
-        RecommendedList groundTruthList = new RecommendedList(numUsers);
-        for (int userIdx = 0; userIdx < numUsers; ++userIdx) {
-            groundTruthList.addList(new ArrayList<KeyValue<Integer, Double>>());
-        }
-        for (MatrixEntry matrixEntry : testMatrix) {
-            int userIdx = matrixEntry.row();
-            int itemIdx = matrixEntry.column();
-            double rating = matrixEntry.get();
-            groundTruthList.add(userIdx, itemIdx, rating);
-        }
-        return groundTruthList;
+    	if(!conf.getBoolean("rec.eval.group", false)) {
+    		int numUsers = testMatrix.rowSize();
+            RecommendedList groundTruthList = new RecommendedList(numUsers);
+            for (int userIdx = 0; userIdx < numUsers; ++userIdx) {
+                groundTruthList.addList(new ArrayList<KeyValue<Integer, Double>>());
+            }
+            for (MatrixEntry matrixEntry : testMatrix) {
+                int userIdx = matrixEntry.row();
+                int itemIdx = matrixEntry.column();
+                double rating = matrixEntry.get();
+                groundTruthList.add(userIdx, itemIdx, rating);
+            }
+            return groundTruthList;	
+    	} else {
+    		GroupDataModel model = (GroupDataModel) recommender.getDataModel();
+    		Table<Integer, Integer, Double> groupRatings = model.getGroupRatings(testMatrix);
+    		int numGroups = model.getGroups().size();
+    		RecommendedList groundTruthList = new RecommendedList(numGroups);
+    		for (int groupIdx = 0; groupIdx < numGroups; ++groupIdx) {
+    			groundTruthList.addList(new ArrayList<KeyValue<Integer, Double>>());
+            }
+    		List<Cell<Integer, Integer, Double>> sortedItemList = groupRatings.cellSet().stream().sorted((cel1,cel2)->cel1.getColumnKey()-cel2.getColumnKey()).collect(Collectors.toList());
+    		for (Cell<Integer, Integer, Double> ratingCell : sortedItemList) {
+				Integer groupIdx = ratingCell.getRowKey();
+				Integer itemIdx = ratingCell.getColumnKey();
+				Double rating = ratingCell.getValue();
+				groundTruthList.add(groupIdx, itemIdx, rating);
+			}
+    		return groundTruthList;
+    	}
+        
     }
 
     /**
