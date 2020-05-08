@@ -4,11 +4,15 @@
 package net.librec.data.model;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Table;
 
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
@@ -19,6 +23,8 @@ import net.librec.data.splitter.GroupDataSplitter;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
+import net.librec.math.structure.SequentialSparseVector;
+import net.librec.recommender.item.RecommendedList;
 import net.librec.util.FileUtil;
 
 /**
@@ -171,14 +177,13 @@ public class GroupDataModel extends AbstractDataModel {
 
 		dataSplitter.setDataConvertor(dataConvertor);
 		dataSplitter.splitData();
-//		TODO this will be the individual train and test data sets
 		trainDataSet = dataSplitter.getTrainData();
 		testDataSet = dataSplitter.getTestData();
-//		TODO Will have to generate group train and test data sets so that when the 
 
 	}
 
 	public Double getGroupRating(List<Double> groupScores) {
+//		TODO Add this parameter to the configuration parameter list
 		String model = conf.get("data.group.model", "addUtil");
 		switch (model) {
 		case "addUtil":
@@ -200,9 +205,37 @@ public class GroupDataModel extends AbstractDataModel {
 	private static Double LeastMisery(List<Double> groupScores) {
 		return groupScores.stream().mapToDouble(a -> a).min().getAsDouble();
 	}
-	
+
 	private static Double MostPleasure(List<Double> groupScores) {
-		return groupScores.stream().mapToDouble(a->a).max().getAsDouble();
+		return groupScores.stream().mapToDouble(a -> a).max().getAsDouble();
+	}
+
+	public Table<Integer, Integer, Double> getGroupRatings(SequentialAccessSparseMatrix targetDataset) {
+		Table<Integer, Integer, Double> groupRatings = HashBasedTable.create();
+		for (Integer group : this.Groups.keySet()) {
+			Map<Integer, List<Double>> currentGroupRatings = new Hashtable<Integer, List<Double>>();
+			List<Integer> groupMembers = this.Groups.get(group);
+			for (Integer member : groupMembers) {
+				SequentialSparseVector row = targetDataset.row(member);
+				int[] itemsRatedByUser = row.getIndices();
+				for (int i = 0; i < itemsRatedByUser.length; i++) {
+					Integer item = itemsRatedByUser[i]; 
+					if (!currentGroupRatings.containsKey(item)) {
+						currentGroupRatings.put(item, new ArrayList<Double>());
+					}
+					currentGroupRatings.get(item).add(row.getAtPosition(i));
+				}
+			}
+			for (Integer item : currentGroupRatings.keySet()) {
+				groupRatings.put(group, item, getGroupRating(currentGroupRatings.get(item)));
+			}
+		}
+		return groupRatings;
+	}
+
+	public Table<Integer, Integer, Double> getGroupRankings(SequentialAccessSparseMatrix targetDataset) {
+//		TODO Make this for the the different ranking methods
+		return null;
 	}
 
 }
