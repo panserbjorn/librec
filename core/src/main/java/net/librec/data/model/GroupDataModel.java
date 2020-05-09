@@ -5,9 +5,14 @@ package net.librec.data.model;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Consumer;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.BiMap;
@@ -202,6 +207,20 @@ public class GroupDataModel extends AbstractDataModel {
 		}
 	}
 
+	public List<KeyValue<Integer, Double>> getGroupRanking(Collection<List<KeyValue<Integer, Double>>> groupRatings) {
+//		TODO Add this parameter to the configuration parameter list
+		String model = conf.get("data.group.model", "borda");
+//		TODO Add the rest of the ranking methods to the switch
+		switch (model) {
+		case "borda":
+			return BordaCount(groupRatings);
+		case "multUtil":
+			return null;
+		default:
+			return null;
+		}
+	}
+
 	private static Double AdditiveUtilitarian(List<Double> groupScores) {
 		return groupScores.stream().mapToDouble(a -> a).average().getAsDouble();
 	}
@@ -213,31 +232,53 @@ public class GroupDataModel extends AbstractDataModel {
 	private static Double MostPleasure(List<Double> groupScores) {
 		return groupScores.stream().mapToDouble(a -> a).max().getAsDouble();
 	}
-	
+
 	private static Double MultiplicativeUtilitarian(List<Double> groupScores) {
-		return groupScores.stream().mapToDouble(a -> a).reduce(1, (a,b) -> a*b);
+		return groupScores.stream().mapToDouble(a -> a).reduce(1, (a, b) -> a * b);
 	}
-	
-	private static List<KeyValue<Integer,Double>> BordaCount(List<Map<Integer, Double>> groupRatings) {
-//		TODO Implement Borda Count
-		return null;
+
+	private static List<KeyValue<Integer, Double>> BordaCount(Collection<List<KeyValue<Integer, Double>>> collection) {
+		Map<Integer, List<Integer>> itemsRankings = new HashMap<Integer, List<Integer>>();
+		int numberItems = 0;
+		for (List<KeyValue<Integer, Double>> individualRating : collection) {
+//			Sort items for each member based on rating
+			List<KeyValue<Integer, Double>> listIndividualRating = individualRating.stream().sorted()
+					.collect(Collectors.toList());
+			for (int i = 0; i < listIndividualRating.size(); i++) {
+				KeyValue<Integer, Double> item = listIndividualRating.get(i);
+				if (!itemsRankings.containsKey(item.getKey())) {
+					numberItems += 1;
+					itemsRankings.put(item.getKey(), new ArrayList<Integer>());
+				}
+				itemsRankings.get(item.getKey()).add(i);
+			}
+		}
+		List<KeyValue<Integer, Double>> ranking = new ArrayList<KeyValue<Integer, Double>>();
+		final int finalItemSize = numberItems;
+		for (Integer item : itemsRankings.keySet()) {
+			List<Integer> inversedRankings = itemsRankings.get(item);
+//			Invert ranking to points and sum
+			Double itemSum = inversedRankings.stream().mapToDouble(a -> finalItemSize - a).sum();
+			ranking.add(new KeyValue<Integer, Double>(item, itemSum));
+		}
+		return ranking;
 	}
-	
+
 	private static List<KeyValue<Integer, Double>> CopelandRule(List<Map<Integer, Double>> groupRatings) {
 //		TODO Implement Copeland Rule
 		return null;
 	}
-	
+
 	private static List<KeyValue<Integer, Double>> PluralityVoting(List<Map<Integer, Double>> groupRatings) {
 //		TODO Implement Plurality voting
 		return null;
-	} 
-	
+	}
+
 	private static List<KeyValue<Integer, Double>> ApprovalVoting(List<Map<Integer, Double>> groupRatings) {
 //		TODO Implement Approval Voting
 		return null;
 	}
-	
+
 	private static List<KeyValue<Integer, Double>> Fairness(List<Map<Integer, Double>> groupRatings) {
 //		TODO Implement Fairness
 		return null;
@@ -245,30 +286,51 @@ public class GroupDataModel extends AbstractDataModel {
 
 	public Table<Integer, Integer, Double> getGroupRatings(SequentialAccessSparseMatrix targetDataset) {
 		Table<Integer, Integer, Double> groupRatings = HashBasedTable.create();
-		for (Integer group : this.Groups.keySet()) {
-			Map<Integer, List<Double>> currentGroupRatings = new Hashtable<Integer, List<Double>>();
-			List<Integer> groupMembers = this.Groups.get(group);
-			for (Integer member : groupMembers) {
-				SequentialSparseVector row = targetDataset.row(member);
-				int[] itemsRatedByUser = row.getIndices();
-				for (int i = 0; i < itemsRatedByUser.length; i++) {
-					Integer item = itemsRatedByUser[i]; 
-					if (!currentGroupRatings.containsKey(item)) {
-						currentGroupRatings.put(item, new ArrayList<Double>());
+		Boolean isranking = conf.getBoolean("rec.recommender.isranking", false);
+		if (isranking) {
+			for (Integer group : this.Groups.keySet()) {
+				List<List<KeyValue<Integer, Double>>> groupsRatings = new ArrayList<List<KeyValue<Integer, Double>>>();
+				List<Integer> groupMembers = this.Groups.get(group);
+				for (Integer member : groupMembers) {
+					List<KeyValue<Integer, Double>> memberRatings = new ArrayList<KeyValue<Integer, Double>>();
+					SequentialSparseVector row = targetDataset.row(member);
+					int[] itemsRatedByUser = row.getIndices();
+					for (int i = 0; i < itemsRatedByUser.length; i++) {
+						Integer item = itemsRatedByUser[i];
+						memberRatings.add(new KeyValue<Integer, Double>(item, row.getAtPosition(i)));
 					}
-					currentGroupRatings.get(item).add(row.getAtPosition(i));
+					if (!memberRatings.isEmpty()) {
+						groupsRatings.add(memberRatings);
+					}
+				}
+				List<KeyValue<Integer, Double>> groupRanking = this.getGroupRanking(groupsRatings);
+				for (KeyValue<Integer, Double> item : groupRanking) {
+					groupRatings.put(group, item.getKey(), item.getValue());
 				}
 			}
-			for (Integer item : currentGroupRatings.keySet()) {
-				groupRatings.put(group, item, getGroupRating(currentGroupRatings.get(item)));
+
+		} else {
+			for (Integer group : this.Groups.keySet()) {
+				Map<Integer, List<Double>> currentGroupRatings = new Hashtable<Integer, List<Double>>();
+				List<Integer> groupMembers = this.Groups.get(group);
+				for (Integer member : groupMembers) {
+					SequentialSparseVector row = targetDataset.row(member);
+					int[] itemsRatedByUser = row.getIndices();
+					for (int i = 0; i < itemsRatedByUser.length; i++) {
+						Integer item = itemsRatedByUser[i];
+						if (!currentGroupRatings.containsKey(item)) {
+							currentGroupRatings.put(item, new ArrayList<Double>());
+						}
+						currentGroupRatings.get(item).add(row.getAtPosition(i));
+					}
+				}
+				for (Integer item : currentGroupRatings.keySet()) {
+					groupRatings.put(group, item, getGroupRating(currentGroupRatings.get(item)));
+				}
 			}
 		}
-		return groupRatings;
-	}
 
-	public Table<Integer, Integer, Double> getGroupRankings(SequentialAccessSparseMatrix targetDataset) {
-//		TODO Make this for the the different ranking methods
-		return null;
+		return groupRatings;
 	}
 
 }

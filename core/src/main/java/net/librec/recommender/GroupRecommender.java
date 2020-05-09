@@ -29,6 +29,7 @@ import net.librec.math.structure.SequentialSparseVector;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.item.ContextKeyValueEntry;
 import net.librec.recommender.item.GenericRecommendedItem;
+import net.librec.recommender.item.KeyValue;
 import net.librec.recommender.item.RecommendedItem;
 import net.librec.recommender.item.RecommendedList;
 import net.librec.util.DriverClassUtil;
@@ -87,24 +88,28 @@ public class GroupRecommender extends AbstractRecommender {
 	protected static List<Double> ratingScale;
 
 	protected Recommender baseRecommender;
-	
-	/**
-     * Get recommender class. {@code Recommender}.
-     *
-     * @return recommender class object
-     * @throws ClassNotFoundException if can't find the class of recommender
-     * @throws IOException            If an I/O error occurs.
-     */
-    @SuppressWarnings("unchecked")
-    public Class<? extends Recommender> getBaseRecommenderClass() throws ClassNotFoundException, IOException {
-//    	TODO: Add this to the configuration list of parameters
-        return (Class<? extends Recommender>) DriverClassUtil.getClass(conf.get("group.base.recommender.class"));
-    }
 
-    @SuppressWarnings("unchecked")
+	/**
+	 * Get recommender class. {@code Recommender}.
+	 *
+	 * @return recommender class object
+	 * @throws ClassNotFoundException if can't find the class of recommender
+	 * @throws IOException            If an I/O error occurs.
+	 */
+	@SuppressWarnings("unchecked")
+	public Class<? extends Recommender> getBaseRecommenderClass() throws ClassNotFoundException, IOException {
+//    	TODO: Add this to the configuration list of parameters
+		return (Class<? extends Recommender>) DriverClassUtil.getClass(conf.get("group.base.recommender.class"));
+	}
+
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void setup() throws LibrecException {
 		super.setup();
+		if (isRanking) {
+//        	This is for the base recommender to not shrink the list of items in the ranking recommendations 
+			conf.setInt("rec.recommender.ranking.topn", this.getDataModel().getItemMappingData().size());
+		}
 		try {
 			Recommender baseRecom = ReflectionUtil.newInstance((Class<Recommender>) getBaseRecommenderClass(), conf);
 			this.baseRecommender = baseRecom;
@@ -112,7 +117,7 @@ public class GroupRecommender extends AbstractRecommender {
 			this.baseRecommender = new ItemKNNRecommender();
 			e.printStackTrace();
 		}
-		
+
 		this.baseRecommender.setContext(this.getContext());
 		trainMatrix = (SequentialAccessSparseMatrix) getDataModel().getTrainDataSet();
 		testMatrix = (SequentialAccessSparseMatrix) getDataModel().getTestDataSet();
@@ -134,65 +139,80 @@ public class GroupRecommender extends AbstractRecommender {
 		}
 	}
 
-
 	private RecommendedList buildGroupRecommendations(RecommendedList individualRecomm) {
 		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
+		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
 
-//      Aggregate the group ratings in structure
-//		TODO This might fail if there are groups that don't have anything inside the test set
-		Map<Integer, Map<Integer, List<Double>>> groupRatings = new HashMap<Integer, Map<Integer, List<Double>>>();
-		for (Integer group : groups.keySet()) {
-			groupRatings.put(group, new HashMap<Integer, List<Double>>());
-		}
-		Iterator<ContextKeyValueEntry> iter = individualRecomm.iterator();
-		while (iter.hasNext()) {
-			ContextKeyValueEntry contextKeyValueEntry = iter.next();
-			if (contextKeyValueEntry != null) {
-				int userId = contextKeyValueEntry.getContextIdx();
-				int itemId = contextKeyValueEntry.getKey();
-				double value = contextKeyValueEntry.getValue();
-				Map<Integer, List<Double>> currentGroupRatings = groupRatings.get(groupAssignation.get(userId));
-				if (!currentGroupRatings.containsKey(itemId)) {
-					currentGroupRatings.put(itemId, new ArrayList<Double>());
+		if (isRanking) {
+			for (Integer group : groups.keySet()) {
+				List<List<KeyValue<Integer, Double>>> singleGroupRatings = new ArrayList<List<KeyValue<Integer, Double>>>();
+				for (Integer member : groups.get(group)) {
+					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
+					singleGroupRatings.add(memberRatings);
 				}
-				currentGroupRatings.get(itemId).add(value);
+				List<KeyValue<Integer, Double>> groupRanking = ((GroupDataModel) this.getDataModel())
+						.getGroupRanking(singleGroupRatings);
+				for (KeyValue<Integer, Double> ranking : groupRanking) {
+					recommendedList.add(group, ranking.getKey(), ranking.getValue());
+				}
 			}
-		}
-		
-//		Retrieve data from training if any
-		for (int group = 0; group < groups.size(); group++) {
-			Set<Integer> items = groupRatings.get(group).keySet();
-			for (Integer item : items) {
-				SequentialSparseVector column = this.trainMatrix.column(item);
-				int[] indices = column.getIndices();
-				List<Integer> groupUsers = groups.get(group);
-				for (int i = 0; i < indices.length; i++) {
-					int userRated = indices[i];
-					if (groupUsers.contains(userRated)) {
-						groupRatings.get(group).get(item).add(column.getAtPosition(i));
+		} else {
+//	      Aggregate the group ratings in structure
+//			TODO This might fail if there are groups that don't have anything inside the test set
+			Map<Integer, Map<Integer, List<Double>>> groupRatings = new HashMap<Integer, Map<Integer, List<Double>>>();
+			for (Integer group : groups.keySet()) {
+				groupRatings.put(group, new HashMap<Integer, List<Double>>());
+			}
+			Iterator<ContextKeyValueEntry> iter = individualRecomm.iterator();
+			while (iter.hasNext()) {
+				ContextKeyValueEntry contextKeyValueEntry = iter.next();
+				if (contextKeyValueEntry != null) {
+					int userId = contextKeyValueEntry.getContextIdx();
+					int itemId = contextKeyValueEntry.getKey();
+					double value = contextKeyValueEntry.getValue();
+					Map<Integer, List<Double>> currentGroupRatings = groupRatings.get(groupAssignation.get(userId));
+					if (!currentGroupRatings.containsKey(itemId)) {
+						currentGroupRatings.put(itemId, new ArrayList<Double>());
+					}
+					currentGroupRatings.get(itemId).add(value);
+				}
+			}
+
+//			Retrieve data from training if any
+			for (int group = 0; group < groups.size(); group++) {
+				Set<Integer> items = groupRatings.get(group).keySet();
+				for (Integer item : items) {
+					SequentialSparseVector column = this.trainMatrix.column(item);
+					int[] indices = column.getIndices();
+					List<Integer> groupUsers = groups.get(group);
+					for (int i = 0; i < indices.length; i++) {
+						int userRated = indices[i];
+						if (groupUsers.contains(userRated)) {
+							groupRatings.get(group).get(item).add(column.getAtPosition(i));
+						}
 					}
 				}
 			}
-		}
 
-		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
 
-//		TODO I could parallelize this so that it is FAR more efficient
-		for (int group = 0; group < groups.size(); group++) {
-			recommendedList.addList(new ArrayList<>());
-			List<Integer> sortedItemList = groupRatings.get(group).keySet().stream().sorted().collect(Collectors.toList());
-			for (Integer item : sortedItemList) {
-				List<Double> groupScores = groupRatings.get(group).get(item);
-				Double groupRating = ((GroupDataModel) this.getDataModel()).getGroupRating(groupScores);
-				recommendedList.add(group, item, groupRating);
+//			TODO I could parallelize this so that it is FAR more efficient
+			for (int group = 0; group < groups.size(); group++) {
+				recommendedList.addList(new ArrayList<>());
+				List<Integer> sortedItemList = groupRatings.get(group).keySet().stream().sorted()
+						.collect(Collectors.toList());
+				for (Integer item : sortedItemList) {
+					List<Double> groupScores = groupRatings.get(group).get(item);
+					Double groupRating = ((GroupDataModel) this.getDataModel()).getGroupRating(groupScores);
+					recommendedList.add(group, item, groupRating);
+				}
 			}
+
 		}
 
 		return recommendedList;
 
 	}
-	
 
 	@Override
 	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
@@ -229,28 +249,29 @@ public class GroupRecommender extends AbstractRecommender {
 		this.baseRecommender.train(getContext());
 
 	}
-	
+
 	@Override
 	public List<RecommendedItem> getRecommendedList(RecommendedList recommendedList) {
-        if (recommendedList != null && recommendedList.size() > 0) {
-            List<RecommendedItem> groupItemList = new ArrayList<>();
-            Iterator<ContextKeyValueEntry> recommendedEntryIter = recommendedList.iterator();
-            if (itemMappingData != null && itemMappingData.size() > 0) {
-                BiMap<Integer, String> itemMappingInverse = itemMappingData.inverse();
-                while (recommendedEntryIter.hasNext()) {
-                    ContextKeyValueEntry contextKeyValueEntry = recommendedEntryIter.next();
-                    if (contextKeyValueEntry != null) {
-                        String groupId = Integer.toString(contextKeyValueEntry.getContextIdx());
-                        String itemId = itemMappingInverse.get(contextKeyValueEntry.getKey());
-                        if (StringUtils.isNotBlank(groupId) && StringUtils.isNotBlank(itemId)) {
-                            groupItemList.add(new GenericRecommendedItem(groupId, itemId, contextKeyValueEntry.getValue()));
-                        }
-                    }
-                }
-                return groupItemList;
-            }
-        }
-        return null;
+		if (recommendedList != null && recommendedList.size() > 0) {
+			List<RecommendedItem> groupItemList = new ArrayList<>();
+			Iterator<ContextKeyValueEntry> recommendedEntryIter = recommendedList.iterator();
+			if (itemMappingData != null && itemMappingData.size() > 0) {
+				BiMap<Integer, String> itemMappingInverse = itemMappingData.inverse();
+				while (recommendedEntryIter.hasNext()) {
+					ContextKeyValueEntry contextKeyValueEntry = recommendedEntryIter.next();
+					if (contextKeyValueEntry != null) {
+						String groupId = Integer.toString(contextKeyValueEntry.getContextIdx());
+						String itemId = itemMappingInverse.get(contextKeyValueEntry.getKey());
+						if (StringUtils.isNotBlank(groupId) && StringUtils.isNotBlank(itemId)) {
+							groupItemList
+									.add(new GenericRecommendedItem(groupId, itemId, contextKeyValueEntry.getValue()));
+						}
+					}
+				}
+				return groupItemList;
+			}
+		}
+		return null;
 	}
 
 }
