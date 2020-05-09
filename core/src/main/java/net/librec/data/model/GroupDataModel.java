@@ -207,7 +207,7 @@ public class GroupDataModel extends AbstractDataModel {
 		}
 	}
 
-	public List<KeyValue<Integer, Double>> getGroupRanking(Collection<List<KeyValue<Integer, Double>>> groupRatings) {
+	public ArrayList<KeyValue<Integer, Double>> getGroupRanking(Collection<List<KeyValue<Integer, Double>>> groupRatings) {
 //		TODO Add this parameter to the configuration parameter list
 		String model = conf.get("data.group.model", "borda");
 //		TODO Add the rest of the ranking methods to the switch
@@ -237,13 +237,13 @@ public class GroupDataModel extends AbstractDataModel {
 		return groupScores.stream().mapToDouble(a -> a).reduce(1, (a, b) -> a * b);
 	}
 
-	private static List<KeyValue<Integer, Double>> BordaCount(Collection<List<KeyValue<Integer, Double>>> collection) {
+	private static ArrayList<KeyValue<Integer, Double>> BordaCount(Collection<List<KeyValue<Integer, Double>>> collection) {
 		Map<Integer, List<Integer>> itemsRankings = new HashMap<Integer, List<Integer>>();
 		int numberItems = 0;
 		for (List<KeyValue<Integer, Double>> individualRating : collection) {
 //			Sort items for each member based on rating
-			List<KeyValue<Integer, Double>> listIndividualRating = individualRating.stream().sorted()
-					.collect(Collectors.toList());
+			List<KeyValue<Integer, Double>> listIndividualRating = individualRating.stream()
+					.sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
 			for (int i = 0; i < listIndividualRating.size(); i++) {
 				KeyValue<Integer, Double> item = listIndividualRating.get(i);
 				if (!itemsRankings.containsKey(item.getKey())) {
@@ -253,7 +253,7 @@ public class GroupDataModel extends AbstractDataModel {
 				itemsRankings.get(item.getKey()).add(i);
 			}
 		}
-		List<KeyValue<Integer, Double>> ranking = new ArrayList<KeyValue<Integer, Double>>();
+		ArrayList<KeyValue<Integer, Double>> ranking = new ArrayList<KeyValue<Integer, Double>>();
 		final int finalItemSize = numberItems;
 		for (Integer item : itemsRankings.keySet()) {
 			List<Integer> inversedRankings = itemsRankings.get(item);

@@ -57,6 +57,7 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 			Set<Integer> groupRat = groupRatings.get(group);
 			double percentageOfGroupRatingForTest = conf.getDouble("group.test.item.ratio", 0.05);
 			int numTests = (int) Math.round(groupRat.size() * percentageOfGroupRatingForTest);
+			System.out.println("NumTests for Group "+ group.toString() + ": " + Integer.toString(numTests));
 			if (numTests > 0) {
 				try {
 					int[] givenPositions = Randoms.nextIntArray(numTests, groupRat.size()-1);

@@ -151,11 +151,9 @@ public class GroupRecommender extends AbstractRecommender {
 					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
 					singleGroupRatings.add(memberRatings);
 				}
-				List<KeyValue<Integer, Double>> groupRanking = ((GroupDataModel) this.getDataModel())
+				ArrayList<KeyValue<Integer, Double>> groupRanking = ((GroupDataModel) this.getDataModel())
 						.getGroupRanking(singleGroupRatings);
-				for (KeyValue<Integer, Double> ranking : groupRanking) {
-					recommendedList.add(group, ranking.getKey(), ranking.getValue());
-				}
+				recommendedList.addList(groupRanking);
 			}
 		} else {
 //	      Aggregate the group ratings in structure
