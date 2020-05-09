@@ -25,6 +25,7 @@ import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
+import net.librec.recommender.item.KeyValue;
 import net.librec.recommender.item.RecommendedList;
 import net.librec.util.FileUtil;
 
@@ -193,6 +194,8 @@ public class GroupDataModel extends AbstractDataModel {
 			return LeastMisery(groupScores);
 		case "mostPl":
 			return MostPleasure(groupScores);
+		case "multUtil":
+			return MultiplicativeUtilitarian(groupScores);
 		default:
 //			TODO Should rise an exception here
 			return 0.0D;
@@ -209,6 +212,35 @@ public class GroupDataModel extends AbstractDataModel {
 
 	private static Double MostPleasure(List<Double> groupScores) {
 		return groupScores.stream().mapToDouble(a -> a).max().getAsDouble();
+	}
+	
+	private static Double MultiplicativeUtilitarian(List<Double> groupScores) {
+		return groupScores.stream().mapToDouble(a -> a).reduce(1, (a,b) -> a*b);
+	}
+	
+	private static List<KeyValue<Integer,Double>> BordaCount(List<Map<Integer, Double>> groupRatings) {
+//		TODO Implement Borda Count
+		return null;
+	}
+	
+	private static List<KeyValue<Integer, Double>> CopelandRule(List<Map<Integer, Double>> groupRatings) {
+//		TODO Implement Copeland Rule
+		return null;
+	}
+	
+	private static List<KeyValue<Integer, Double>> PluralityVoting(List<Map<Integer, Double>> groupRatings) {
+//		TODO Implement Plurality voting
+		return null;
+	} 
+	
+	private static List<KeyValue<Integer, Double>> ApprovalVoting(List<Map<Integer, Double>> groupRatings) {
+//		TODO Implement Approval Voting
+		return null;
+	}
+	
+	private static List<KeyValue<Integer, Double>> Fairness(List<Map<Integer, Double>> groupRatings) {
+//		TODO Implement Fairness
+		return null;
 	}
 
 	public Table<Integer, Integer, Double> getGroupRatings(SequentialAccessSparseMatrix targetDataset) {
