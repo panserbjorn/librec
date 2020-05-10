@@ -213,11 +213,11 @@ public class GroupDataModel extends AbstractDataModel {
 		}
 	}
 
-	public ArrayList<KeyValue<Integer, Double>> getGroupRanking(
-			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
+	public ArrayList<KeyValue<Integer, Double>> getGroupRanking(List<List<KeyValue<Integer, Double>>> groupRatings) {
 //		TODO Add this parameter to the configuration parameter list
 		String model = conf.get("data.group.model", "borda");
-//		TODO Add the rest of the ranking methods to the switch
+		Integer topN = conf.getInt("rec.recommender.ranking.topn", 10);
+
 		switch (model) {
 		case "borda":
 			return BordaCount(groupRatings);
@@ -226,11 +226,16 @@ public class GroupDataModel extends AbstractDataModel {
 		case "copeland":
 			return CopelandRule(groupRatings);
 		case "plurality":
-			Integer topN = conf.getInt("rec.recommender.ranking.topn", 10);
+
 			return PluralityVoting(groupRatings, topN);
 		case "approval":
 			Double approvalThreshold = conf.getDouble("rec.recommender.approval");
 			return ApprovalVoting(groupRatings, approvalThreshold);
+		case "fairness":
+			return Fairness(groupRatings, topN);
+		case "avgWOM":
+			Double miseryThreshold = conf.getDouble("rec.misery.threshold");
+			return AverageWithoutMisery(groupRatings, miseryThreshold);
 		default:
 			return null;
 		}
@@ -298,7 +303,7 @@ public class GroupDataModel extends AbstractDataModel {
 		Integer numberItems = itemTemporalMap.size();
 		List<int[]> itemConfrontationCount = new ArrayList<int[]>();
 		for (int i = 0; i < numberItems - 1; i++) {
-			int[] confrontationRow = new int[numberItems-(i+1)];
+			int[] confrontationRow = new int[numberItems - (i + 1)];
 			Arrays.fill(confrontationRow, 0);
 			itemConfrontationCount.add(confrontationRow);
 		}
@@ -355,53 +360,102 @@ public class GroupDataModel extends AbstractDataModel {
 
 	private static ArrayList<KeyValue<Integer, Double>> PluralityVoting(
 			Collection<List<KeyValue<Integer, Double>>> groupRatings, Integer topN) {
-		
+
 		groupRatings.forEach(memberRating -> memberRating.sort(Collections.reverseOrder(Map.Entry.comparingByValue())));
-		
+
 		List<Integer> rank = new ArrayList<Integer>();
-		
-		while(rank.size() < topN) {
+
+		while (rank.size() < topN) {
 			Map<Integer, Integer> voting = new HashMap<Integer, Integer>();
 			for (List<KeyValue<Integer, Double>> memberRating : groupRatings) {
-				Optional<KeyValue<Integer, Double>> seek = memberRating.stream().filter(item -> !rank.contains(item.getKey())).findFirst();
+				Optional<KeyValue<Integer, Double>> seek = memberRating.stream()
+						.filter(item -> !rank.contains(item.getKey())).findFirst();
 				if (seek.isPresent()) {
-					voting.compute(seek.get().getKey(), (k,v) -> (v==null) ? 1: v+1);
+					voting.compute(seek.get().getKey(), (k, v) -> (v == null) ? 1 : v + 1);
 				}
 			}
-			List<Entry<Integer, Integer>> votingResult = voting.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).collect(Collectors.toList());
+			List<Entry<Integer, Integer>> votingResult = voting.entrySet().stream()
+					.sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).collect(Collectors.toList());
 			Integer highestVoting = votingResult.get(0).getValue();
-			List<Integer> highestRankedList = votingResult.stream().filter(item -> item.getValue()==highestVoting).map(item -> item.getKey()).collect(Collectors.toList());
+			List<Integer> highestRankedList = votingResult.stream().filter(item -> item.getValue() == highestVoting)
+					.map(item -> item.getKey()).collect(Collectors.toList());
 			rank.addAll(highestRankedList);
 		}
 		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer, Double>>();
-		
+
 		for (int i = 0; i < rank.size(); i++) {
 			Integer item = rank.get(i);
-			groupRanking.add(new KeyValue<Integer, Double>(item, rank.size()-item + 0.0));
+			groupRanking.add(new KeyValue<Integer, Double>(item, rank.size() - i + 0.0));
 		}
-		
+
 		return groupRanking;
 	}
 
 	private static ArrayList<KeyValue<Integer, Double>> ApprovalVoting(
 			Collection<List<KeyValue<Integer, Double>>> groupRatings, Double approvalThreshold) {
-		
+
 		Map<Integer, Integer> voting = new HashMap<Integer, Integer>();
 		for (List<KeyValue<Integer, Double>> memberRatings : groupRatings) {
-			memberRatings.stream().filter(item -> item.getValue() > approvalThreshold).forEach(item -> voting.compute(item.getKey(), (k,v)->(v==null)?1:v+1));
+			memberRatings.stream().filter(item -> item.getValue() > approvalThreshold)
+					.forEach(item -> voting.compute(item.getKey(), (k, v) -> (v == null) ? 1 : v + 1));
 		}
-		
-		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer,Double>>();
+
+		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer, Double>>();
 		for (Entry<Integer, Integer> vote : voting.entrySet()) {
-			groupRanking.add(new KeyValue<Integer, Double>(vote.getKey(), vote.getValue()+0.0));
+			groupRanking.add(new KeyValue<Integer, Double>(vote.getKey(), vote.getValue() + 0.0));
 		}
 		return groupRanking;
 	}
 
-	private static ArrayList<KeyValue<Integer, Double>> Fairness(
-			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
-//		TODO Implement Fairness
-		return null;
+	private static ArrayList<KeyValue<Integer, Double>> Fairness(List<List<KeyValue<Integer, Double>>> groupRatings,
+			Integer topN) {
+
+		groupRatings.forEach(memberRating -> memberRating.sort(Collections.reverseOrder(Map.Entry.comparingByValue())));
+
+		List<Integer> rank = new ArrayList<Integer>();
+
+		int index = 0;
+		while (rank.size() < topN) {
+			int positionMember = index++ % groupRatings.size();
+			List<KeyValue<Integer, Double>> memberRating = groupRatings.get(positionMember);
+			Optional<KeyValue<Integer, Double>> item = memberRating.stream().filter(kv -> !rank.contains(kv.getKey()))
+					.findFirst();
+			if (item.isPresent()) {
+				rank.add(item.get().getKey());
+			}
+		}
+
+		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer, Double>>();
+
+		for (int i = 0; i < rank.size(); i++) {
+			Integer item = rank.get(i);
+			groupRanking.add(new KeyValue<Integer, Double>(item, rank.size() - i + 0.0));
+		}
+
+		return groupRanking;
+	}
+	
+	private static ArrayList<KeyValue<Integer, Double>> AverageWithoutMisery (List<List<KeyValue<Integer, Double>>> groupRatings, Double miseryThreshold) {
+		
+		Map<Integer, List<Double>> itemRatings = new HashMap<Integer, List<Double>>(); 
+		
+		for (List<KeyValue<Integer, Double>> memberRating : groupRatings) {
+			List<KeyValue<Integer, Double>> filteredRatings = memberRating.stream().filter(item -> item.getValue() > miseryThreshold).collect(Collectors.toList());
+			for (KeyValue<Integer, Double> item : filteredRatings) {
+				if (!itemRatings.containsKey(item.getKey())) {
+					itemRatings.put(item.getKey(), new ArrayList<Double>());
+				}
+				itemRatings.get(item.getKey()).add(item.getValue());
+			}
+		}
+		
+		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer,Double>>();
+		for (Integer item : itemRatings.keySet()) {
+			Double rank = itemRatings.get(item).stream().mapToDouble(a -> a).average().getAsDouble();
+			groupRanking.add(new KeyValue<Integer, Double>(item, rank));
+		}
+		
+		return groupRanking;
 	}
 
 	public Table<Integer, Integer, Double> getGroupRatings(SequentialAccessSparseMatrix targetDataset) {
