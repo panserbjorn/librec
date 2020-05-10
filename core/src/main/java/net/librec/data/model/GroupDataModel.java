@@ -228,6 +228,9 @@ public class GroupDataModel extends AbstractDataModel {
 		case "plurality":
 			Integer topN = conf.getInt("rec.recommender.ranking.topn", 10);
 			return PluralityVoting(groupRatings, topN);
+		case "approval":
+			Double approvalThreshold = conf.getDouble("rec.recommender.approval");
+			return ApprovalVoting(groupRatings, approvalThreshold);
 		default:
 			return null;
 		}
@@ -352,7 +355,6 @@ public class GroupDataModel extends AbstractDataModel {
 
 	private static ArrayList<KeyValue<Integer, Double>> PluralityVoting(
 			Collection<List<KeyValue<Integer, Double>>> groupRatings, Integer topN) {
-//		TODO Optimize it is too slow
 		
 		groupRatings.forEach(memberRating -> memberRating.sort(Collections.reverseOrder(Map.Entry.comparingByValue())));
 		
@@ -382,9 +384,18 @@ public class GroupDataModel extends AbstractDataModel {
 	}
 
 	private static ArrayList<KeyValue<Integer, Double>> ApprovalVoting(
-			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
-//		TODO Implement Approval Voting
-		return null;
+			Collection<List<KeyValue<Integer, Double>>> groupRatings, Double approvalThreshold) {
+		
+		Map<Integer, Integer> voting = new HashMap<Integer, Integer>();
+		for (List<KeyValue<Integer, Double>> memberRatings : groupRatings) {
+			memberRatings.stream().filter(item -> item.getValue() > approvalThreshold).forEach(item -> voting.compute(item.getKey(), (k,v)->(v==null)?1:v+1));
+		}
+		
+		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer,Double>>();
+		for (Entry<Integer, Integer> vote : voting.entrySet()) {
+			groupRanking.add(new KeyValue<Integer, Double>(vote.getKey(), vote.getValue()+0.0));
+		}
+		return groupRanking;
 	}
 
 	private static ArrayList<KeyValue<Integer, Double>> Fairness(
