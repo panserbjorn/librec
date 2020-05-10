@@ -46,7 +46,7 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 
 //		Get all ratings by group
 		for (MatrixEntry matrixEntry : preferenceMatrix) {
-//			TODO: I could add or maintain only the items that have been rated bay a certain number or percentage of group members
+//			TODO: I could add or maintain only the items that have been rated by a certain number or percentage of group members
 			groupRatings.get(groupAssignation.get(matrixEntry.row())).add(matrixEntry.column());
 		}
 

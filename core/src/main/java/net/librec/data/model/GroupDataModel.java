@@ -4,13 +4,18 @@
 package net.librec.data.model;
 
 import java.io.IOException;
+import java.security.Key;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -203,11 +208,13 @@ public class GroupDataModel extends AbstractDataModel {
 			return MultiplicativeUtilitarian(groupScores);
 		default:
 //			TODO Should rise an exception here
+			LOG.error("Group Data Model not defined. Output to 0 in all instances");
 			return 0.0D;
 		}
 	}
 
-	public ArrayList<KeyValue<Integer, Double>> getGroupRanking(Collection<List<KeyValue<Integer, Double>>> groupRatings) {
+	public ArrayList<KeyValue<Integer, Double>> getGroupRanking(
+			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
 //		TODO Add this parameter to the configuration parameter list
 		String model = conf.get("data.group.model", "borda");
 //		TODO Add the rest of the ranking methods to the switch
@@ -216,6 +223,11 @@ public class GroupDataModel extends AbstractDataModel {
 			return BordaCount(groupRatings);
 		case "multUtil":
 			return null;
+		case "copeland":
+			return CopelandRule(groupRatings);
+		case "plurality":
+			Integer topN = conf.getInt("rec.recommender.ranking.topn", 10);
+			return PluralityVoting(groupRatings, topN);
 		default:
 			return null;
 		}
@@ -237,13 +249,15 @@ public class GroupDataModel extends AbstractDataModel {
 		return groupScores.stream().mapToDouble(a -> a).reduce(1, (a, b) -> a * b);
 	}
 
-	private static ArrayList<KeyValue<Integer, Double>> BordaCount(Collection<List<KeyValue<Integer, Double>>> collection) {
+	private static ArrayList<KeyValue<Integer, Double>> BordaCount(
+			Collection<List<KeyValue<Integer, Double>>> collection) {
 		Map<Integer, List<Integer>> itemsRankings = new HashMap<Integer, List<Integer>>();
 		int numberItems = 0;
 		for (List<KeyValue<Integer, Double>> individualRating : collection) {
 //			Sort items for each member based on rating
 			List<KeyValue<Integer, Double>> listIndividualRating = individualRating.stream()
 					.sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
+			Collections.reverse(listIndividualRating);
 			for (int i = 0; i < listIndividualRating.size(); i++) {
 				KeyValue<Integer, Double> item = listIndividualRating.get(i);
 				if (!itemsRankings.containsKey(item.getKey())) {
@@ -264,22 +278,117 @@ public class GroupDataModel extends AbstractDataModel {
 		return ranking;
 	}
 
-	private static List<KeyValue<Integer, Double>> CopelandRule(List<Map<Integer, Double>> groupRatings) {
-//		TODO Implement Copeland Rule
-		return null;
+	private static ArrayList<KeyValue<Integer, Double>> CopelandRule(
+			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
+//		TODO Need to optimize this. The copeland Rule takes about 4 minutes in moveikLens
+//		TODO Now I know that if this is being called, the groupRatings al have the same length
+
+		BiMap<Integer, Integer> itemTemporalMap = HashBiMap.create();
+		for (List<KeyValue<Integer, Double>> memberRatings : groupRatings) {
+			for (KeyValue<Integer, Double> rating : memberRatings) {
+				if (!itemTemporalMap.containsKey(rating.getKey())) {
+					itemTemporalMap.put(rating.getKey(), itemTemporalMap.size());
+				}
+			}
+		}
+//		Initialize confrontation table
+		Integer numberItems = itemTemporalMap.size();
+		List<int[]> itemConfrontationCount = new ArrayList<int[]>();
+		for (int i = 0; i < numberItems - 1; i++) {
+			int[] confrontationRow = new int[numberItems-(i+1)];
+			Arrays.fill(confrontationRow, 0);
+			itemConfrontationCount.add(confrontationRow);
+		}
+//		Collect the result of all the confrontations
+		for (List<KeyValue<Integer, Double>> memeberRatings : groupRatings) {
+			List<KeyValue<Integer, Double>> sortedRatings = memeberRatings.stream().sorted(Map.Entry.comparingByValue())
+					.collect(Collectors.toList());
+			Collections.reverse(sortedRatings);
+			Set<Integer> preferredAgainst = new HashSet<Integer>(itemTemporalMap.keySet());
+			for (KeyValue<Integer, Double> item : sortedRatings) {
+				preferredAgainst.remove(item.getKey());
+				for (Integer looser : preferredAgainst) {
+					Integer itemMapping = itemTemporalMap.get(item.getKey());
+					Integer looserMapping = itemTemporalMap.get(looser);
+					if (itemMapping < looserMapping) {
+						Integer itemPosition = itemMapping;
+						Integer looserPosition = looserMapping - (itemMapping + 1);
+						itemConfrontationCount.get(itemPosition)[looserPosition]++;
+					} else {
+						Integer looserPosition = looserMapping;
+						Integer itemPosition = itemMapping - (looserMapping + 1);
+						itemConfrontationCount.get(looserPosition)[itemPosition]--;
+					}
+				}
+			}
+
+		}
+
+//		Compute the winning numbers
+		int[] winningCount = new int[numberItems];
+		Arrays.fill(winningCount, 0);
+		for (int i = 0; i < numberItems - 1; i++) {
+			for (int j = i + 1; j < numberItems; j++) {
+				int jPosition = j - (i + 1);
+				Integer confrontationCount = itemConfrontationCount.get(i)[jPosition];
+				if (confrontationCount > 0) {
+					winningCount[i]++;
+				} else if (confrontationCount < 0) {
+					winningCount[j]++;
+				}
+			}
+		}
+
+//		Generate result without mapping
+		BiMap<Integer, Integer> inverse = itemTemporalMap.inverse();
+		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer, Double>>();
+		for (int i = 0; i < winningCount.length; i++) {
+			int score = winningCount[i];
+			groupRanking.add(new KeyValue<Integer, Double>(inverse.get(i), score + 0.0));
+		}
+
+		return groupRanking;
 	}
 
-	private static List<KeyValue<Integer, Double>> PluralityVoting(List<Map<Integer, Double>> groupRatings) {
-//		TODO Implement Plurality voting
-		return null;
+	private static ArrayList<KeyValue<Integer, Double>> PluralityVoting(
+			Collection<List<KeyValue<Integer, Double>>> groupRatings, Integer topN) {
+//		TODO Optimize it is too slow
+		
+		groupRatings.forEach(memberRating -> memberRating.sort(Collections.reverseOrder(Map.Entry.comparingByValue())));
+		
+		List<Integer> rank = new ArrayList<Integer>();
+		
+		while(rank.size() < topN) {
+			Map<Integer, Integer> voting = new HashMap<Integer, Integer>();
+			for (List<KeyValue<Integer, Double>> memberRating : groupRatings) {
+				Optional<KeyValue<Integer, Double>> seek = memberRating.stream().filter(item -> !rank.contains(item.getKey())).findFirst();
+				if (seek.isPresent()) {
+					voting.compute(seek.get().getKey(), (k,v) -> (v==null) ? 1: v+1);
+				}
+			}
+			List<Entry<Integer, Integer>> votingResult = voting.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).collect(Collectors.toList());
+			Integer highestVoting = votingResult.get(0).getValue();
+			List<Integer> highestRankedList = votingResult.stream().filter(item -> item.getValue()==highestVoting).map(item -> item.getKey()).collect(Collectors.toList());
+			rank.addAll(highestRankedList);
+		}
+		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer, Double>>();
+		
+		for (int i = 0; i < rank.size(); i++) {
+			Integer item = rank.get(i);
+			groupRanking.add(new KeyValue<Integer, Double>(item, rank.size()-item + 0.0));
+		}
+		
+		return groupRanking;
 	}
 
-	private static List<KeyValue<Integer, Double>> ApprovalVoting(List<Map<Integer, Double>> groupRatings) {
+	private static ArrayList<KeyValue<Integer, Double>> ApprovalVoting(
+			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
 //		TODO Implement Approval Voting
 		return null;
 	}
 
-	private static List<KeyValue<Integer, Double>> Fairness(List<Map<Integer, Double>> groupRatings) {
+	private static ArrayList<KeyValue<Integer, Double>> Fairness(
+			Collection<List<KeyValue<Integer, Double>>> groupRatings) {
 //		TODO Implement Fairness
 		return null;
 	}

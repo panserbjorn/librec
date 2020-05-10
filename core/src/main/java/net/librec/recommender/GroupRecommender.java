@@ -108,7 +108,8 @@ public class GroupRecommender extends AbstractRecommender {
 		super.setup();
 		if (isRanking) {
 //        	This is for the base recommender to not shrink the list of items in the ranking recommendations 
-			conf.setInt("rec.recommender.ranking.topn", this.getDataModel().getItemMappingData().size());
+//			conf.setInt("rec.recommender.ranking.topn", this.getDataModel().getItemMappingData().size());
+//			conf.setInt("rec.group.ranking.topn", this.topN);
 		}
 		try {
 			Recommender baseRecom = ReflectionUtil.newInstance((Class<Recommender>) getBaseRecommenderClass(), conf);
@@ -193,7 +194,6 @@ public class GroupRecommender extends AbstractRecommender {
 				}
 			}
 
-
 //			TODO I could parallelize this so that it is FAR more efficient
 			for (int group = 0; group < groups.size(); group++) {
 				recommendedList.addList(new ArrayList<>());
@@ -244,8 +244,15 @@ public class GroupRecommender extends AbstractRecommender {
 
 	@Override
 	protected void trainModel() throws LibrecException {
-		this.baseRecommender.train(getContext());
+		int originalTopN = conf.getInt("rec.recommender.ranking.topn", 10);
+		if (isRanking) {
 
+			conf.setInt("rec.recommender.ranking.topn", this.getDataModel().getItemMappingData().size());
+		}
+		this.baseRecommender.train(getContext());
+		if (isRanking) {
+			conf.setInt("rec.recommender.ranking.topn", originalTopN);
+		}
 	}
 
 	@Override
