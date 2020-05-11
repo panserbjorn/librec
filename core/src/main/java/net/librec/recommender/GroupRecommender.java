@@ -141,71 +141,23 @@ public class GroupRecommender extends AbstractRecommender {
 	}
 
 	private RecommendedList buildGroupRecommendations(RecommendedList individualRecomm) {
-		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
 		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
 
-		if (isRanking) {
-			for (Integer group : groups.keySet()) {
-				List<List<KeyValue<Integer, Double>>> singleGroupRatings = new ArrayList<List<KeyValue<Integer, Double>>>();
-				for (Integer member : groups.get(group)) {
-					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
-					singleGroupRatings.add(memberRatings);
-				}
-				ArrayList<KeyValue<Integer, Double>> groupRanking = ((GroupDataModel) this.getDataModel())
-						.getGroupRanking(singleGroupRatings);
-				recommendedList.addList(groupRanking);
+		for (Integer group : groups.keySet()) {
+			Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
+			for (Integer member : groups.get(group)) {
+				List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
+				singleGroupRatings.put(member, memberRatings);
 			}
-		} else {
-//	      Aggregate the group ratings in structure
-//			TODO This might fail if there are groups that don't have anything inside the test set
-			Map<Integer, Map<Integer, List<Double>>> groupRatings = new HashMap<Integer, Map<Integer, List<Double>>>();
-			for (Integer group : groups.keySet()) {
-				groupRatings.put(group, new HashMap<Integer, List<Double>>());
+			ArrayList<KeyValue<Integer, Double>> groupScore = null;
+			if (isRanking) {
+				groupScore = ((GroupDataModel) this.getDataModel()).getGroupRanking(singleGroupRatings);
+			} else {
+				groupScore = ((GroupDataModel) this.getDataModel()).getGroupRatings(singleGroupRatings);
 			}
-			Iterator<ContextKeyValueEntry> iter = individualRecomm.iterator();
-			while (iter.hasNext()) {
-				ContextKeyValueEntry contextKeyValueEntry = iter.next();
-				if (contextKeyValueEntry != null) {
-					int userId = contextKeyValueEntry.getContextIdx();
-					int itemId = contextKeyValueEntry.getKey();
-					double value = contextKeyValueEntry.getValue();
-					Map<Integer, List<Double>> currentGroupRatings = groupRatings.get(groupAssignation.get(userId));
-					if (!currentGroupRatings.containsKey(itemId)) {
-						currentGroupRatings.put(itemId, new ArrayList<Double>());
-					}
-					currentGroupRatings.get(itemId).add(value);
-				}
-			}
-
-//			Retrieve data from training if any
-			for (int group = 0; group < groups.size(); group++) {
-				Set<Integer> items = groupRatings.get(group).keySet();
-				for (Integer item : items) {
-					SequentialSparseVector column = this.trainMatrix.column(item);
-					int[] indices = column.getIndices();
-					List<Integer> groupUsers = groups.get(group);
-					for (int i = 0; i < indices.length; i++) {
-						int userRated = indices[i];
-						if (groupUsers.contains(userRated)) {
-							groupRatings.get(group).get(item).add(column.getAtPosition(i));
-						}
-					}
-				}
-			}
-
-//			TODO I could parallelize this so that it is FAR more efficient
-			for (int group = 0; group < groups.size(); group++) {
-				recommendedList.addList(new ArrayList<>());
-				List<Integer> sortedItemList = groupRatings.get(group).keySet().stream().sorted()
-						.collect(Collectors.toList());
-				for (Integer item : sortedItemList) {
-					List<Double> groupScores = groupRatings.get(group).get(item);
-					Double groupRating = ((GroupDataModel) this.getDataModel()).getGroupRating(groupScores);
-					recommendedList.add(group, item, groupRating);
-				}
-			}
-
+			groupScore.sort(Map.Entry.comparingByKey());
+			recommendedList.addList(groupScore);
 		}
 
 		return recommendedList;
