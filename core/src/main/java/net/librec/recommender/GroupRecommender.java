@@ -12,8 +12,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.collect.BiMap;
@@ -25,7 +23,6 @@ import net.librec.data.structure.LibrecDataList;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
-import net.librec.math.structure.SequentialSparseVector;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.item.ContextKeyValueEntry;
 import net.librec.recommender.item.GenericRecommendedItem;
@@ -33,7 +30,6 @@ import net.librec.recommender.item.KeyValue;
 import net.librec.recommender.item.RecommendedItem;
 import net.librec.recommender.item.RecommendedList;
 import net.librec.util.DriverClassUtil;
-import net.librec.util.Lists;
 import net.librec.util.ReflectionUtil;
 
 /**
@@ -150,12 +146,7 @@ public class GroupRecommender extends AbstractRecommender {
 				List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
 				singleGroupRatings.put(member, memberRatings);
 			}
-			ArrayList<KeyValue<Integer, Double>> groupScore = null;
-			if (isRanking) {
-				groupScore = ((GroupDataModel) this.getDataModel()).getGroupRanking(singleGroupRatings);
-			} else {
-				groupScore = ((GroupDataModel) this.getDataModel()).getGroupRatings(singleGroupRatings);
-			}
+			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel)this.getDataModel()).computeGroupModel(singleGroupRatings);
 			groupScore.sort(Map.Entry.comparingByKey());
 			recommendedList.addList(groupScore);
 		}
