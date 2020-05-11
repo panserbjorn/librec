@@ -102,11 +102,6 @@ public class GroupRecommender extends AbstractRecommender {
 	@Override
 	protected void setup() throws LibrecException {
 		super.setup();
-		if (isRanking) {
-//        	This is for the base recommender to not shrink the list of items in the ranking recommendations 
-//			conf.setInt("rec.recommender.ranking.topn", this.getDataModel().getItemMappingData().size());
-//			conf.setInt("rec.group.ranking.topn", this.topN);
-		}
 		try {
 			Recommender baseRecom = ReflectionUtil.newInstance((Class<Recommender>) getBaseRecommenderClass(), conf);
 			this.baseRecommender = baseRecom;
