@@ -133,21 +133,55 @@ public class GroupRecommender extends AbstractRecommender {
 
 	private RecommendedList buildGroupRecommendations(RecommendedList individualRecomm) {
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
-		RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
+		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 
-		for (Integer group : groups.keySet()) {
-			Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
-			for (Integer member : groups.get(group)) {
-				List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
-				singleGroupRatings.put(member, memberRatings);
+		Boolean groupRec = conf.getBoolean("rec.eval.group", false);
+		if (groupRec) {
+			RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
+
+			for (Integer group : groups.keySet()) {
+				Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
+				for (Integer member : groups.get(group)) {
+					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
+					singleGroupRatings.put(member, memberRatings);
+				}
+				ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel())
+						.computeGroupModel(singleGroupRatings);
+				groupScore.sort(Map.Entry.comparingByKey());
+				recommendedList.addList(groupScore);
 			}
-			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel)this.getDataModel()).computeGroupModel(singleGroupRatings);
-			groupScore.sort(Map.Entry.comparingByKey());
-			recommendedList.addList(groupScore);
+
+			return recommendedList;
+		} else {
+			RecommendedList recommendedList = new RecommendedList(individualRecomm.size());
+			Map<Integer, Map<Integer, Double>> groupsAggregations = new HashMap<Integer, Map<Integer, Double>>();
+
+			for (Integer group : groups.keySet()) {
+				Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
+				for (Integer member : groups.get(group)) {
+					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
+					singleGroupRatings.put(member, memberRatings);
+				}
+				ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel())
+						.computeGroupModel(singleGroupRatings);
+				Map<Integer, Double> groupScoreMap = new HashMap<Integer, Double>();
+				groupScore.forEach(kv -> groupScoreMap.put(kv.getKey(), kv.getValue()));
+				groupsAggregations.put(group, groupScoreMap);
+			}
+
+			for (int i = 0; i < individualRecomm.size(); i++) {
+				ArrayList<KeyValue<Integer,Double>> scores = new ArrayList<KeyValue<Integer,Double>>();
+				Set<Integer> keySetByContext = individualRecomm.getKeySetByContext(i);
+				for (Integer item : keySetByContext) {
+					Integer groupBelonging = groupAssignation.get(i);
+					Double score = groupsAggregations.get(groupBelonging).get(item);
+					scores.add(new KeyValue<Integer, Double>(item,score));
+				}
+				scores.sort(Map.Entry.comparingByKey());
+				recommendedList.addList(scores);
+			}
+			return recommendedList;
 		}
-
-		return recommendedList;
-
 	}
 
 	@Override
@@ -184,7 +218,6 @@ public class GroupRecommender extends AbstractRecommender {
 	protected void trainModel() throws LibrecException {
 		int originalTopN = conf.getInt("rec.recommender.ranking.topn", 10);
 		if (isRanking) {
-
 			conf.setInt("rec.recommender.ranking.topn", this.getDataModel().getItemMappingData().size());
 		}
 		this.baseRecommender.train(getContext());
@@ -198,12 +231,16 @@ public class GroupRecommender extends AbstractRecommender {
 		if (recommendedList != null && recommendedList.size() > 0) {
 			List<RecommendedItem> groupItemList = new ArrayList<>();
 			Iterator<ContextKeyValueEntry> recommendedEntryIter = recommendedList.iterator();
-			if (itemMappingData != null && itemMappingData.size() > 0) {
+			if (userMappingData != null && userMappingData.size() > 0 && itemMappingData != null && itemMappingData.size() > 0) {
+				BiMap<Integer, String> userMappingInverse = userMappingData.inverse();
 				BiMap<Integer, String> itemMappingInverse = itemMappingData.inverse();
 				while (recommendedEntryIter.hasNext()) {
 					ContextKeyValueEntry contextKeyValueEntry = recommendedEntryIter.next();
 					if (contextKeyValueEntry != null) {
 						String groupId = Integer.toString(contextKeyValueEntry.getContextIdx());
+						if (conf.getBoolean("rec.eval.group", false)) {
+							groupId = userMappingInverse.get(contextKeyValueEntry.getContextIdx());
+						}
 						String itemId = itemMappingInverse.get(contextKeyValueEntry.getKey());
 						if (StringUtils.isNotBlank(groupId) && StringUtils.isNotBlank(itemId)) {
 							groupItemList
