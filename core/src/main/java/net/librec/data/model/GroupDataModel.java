@@ -39,6 +39,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 	private Map<Integer, Integer> Groupassignation;
 	private Map<Integer, List<Integer>> Groups;
 	private BiMap<String, Integer> groupMapping;
+	private Map<Integer, Double> userDistances;
 	private int NumberOfGroups;
 
 	/**
@@ -67,10 +68,13 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		BiMap<Integer, String> inverseGroupMapping = groupMapping.inverse();
 		// convert itemList to string
 		StringBuilder sb = new StringBuilder();
+		SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
 		for (Integer userID : groupAssignation.keySet()) {
 			String userId = inverseUserMapping.get(userID);
 			String groupId = inverseGroupMapping.get(groupAssignation.get(userID));
-			sb.append(userId).append(",").append(groupId).append("\n");
+			String distaceFromCentroid = userDistances.get(userID).toString();
+			String numRatings = Integer.toString(preferenceMatrix.row(userID).getIndices().length);
+			sb.append(userId).append(",").append(groupId).append(",").append(distaceFromCentroid).append(",").append(numRatings).append("\n");
 		}
 		String resultData = sb.toString();
 		// save resultData
@@ -105,6 +109,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 				groupBuilder.calculate();
 				this.Groupassignation = groupBuilder.getAssignation();
 				this.Groups = groupBuilder.getGroupMapping();
+				this.userDistances = groupBuilder.getUsersDistances();
 //				Build the groupMapping data
 				for (Integer group : this.Groups.keySet()) {
 					this.groupMapping.put(Integer.toString(group), group);

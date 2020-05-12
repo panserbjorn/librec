@@ -87,7 +87,6 @@ public class Kmeans {
 			// Calculates total distance between new and old Centroids
 			double distance = 0;
 			for (int i = 0; i < lastCentroids.size(); i++) {
-//				distance += 1 - sim.getCorrelation(lastCentroids.get(i), currentCentroids.get(i));
 				distance += this.Distance(lastCentroids.get(i), currentCentroids.get(i));
 			}
 			System.out.println("#################");
@@ -156,7 +155,6 @@ public class Kmeans {
 		double max = Double.MAX_VALUE;
 		double min = max;
 		int cluster = 0;
-		double similarity = 0.0;
 		double distance = Double.MAX_VALUE;
 
 		int numUsers = this.sparceMatrix.rowSize();
@@ -167,9 +165,10 @@ public class Kmeans {
 			for (int j = 0; j < NUM_CLUSTERS; j++) {
 				Cluster c = clusters.get(j);
 				distance = this.Distance(user, c.getCentroid());
-//				similarity = sim.getCorrelationIndependently(this.conf, user, c.getCentroid());
+				if (distance == 0.0 ) {
+					System.out.println("ZERO");
+				}
 				if (Double.isNaN(distance)) {
-//					System.out.println("NAN!");
 					distance = Double.MAX_VALUE;
 				}
 				if (distance < min) {
@@ -178,7 +177,7 @@ public class Kmeans {
 				}
 			}
 
-			clusters.get(cluster).addUser(user, i);
+			clusters.get(cluster).addUser(user, i, min);
 		}
 	}
 	
@@ -234,5 +233,13 @@ public class Kmeans {
 		return groups;
 	}
 
+	public Map<Integer, Double> getUsersDistances() {
+		Map<Integer, Double> userDistances = new HashMap<Integer, Double>();
+		for (int i = 0; i < clusters.size(); i++) {
+			Cluster clust = clusters.get(i);
+			userDistances.putAll(clust.getUserDistances());
+		}
+		return userDistances;
+	}
 
 }

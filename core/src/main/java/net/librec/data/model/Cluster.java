@@ -27,6 +27,7 @@ public class Cluster {
 	//Class that represents the users with their ids and their ratings
 	private class clusterUser {
 		public  SequentialSparseVector ratings;
+		public Double distanceFromCentroid;
 		public int index;
 	}
 	
@@ -53,6 +54,14 @@ public class Cluster {
 		return userMap;
 	}
 	
+	public Map<Integer, Double> getUserDistances(){
+		Map<Integer, Double> userDistances = new HashMap<Integer, Double>();
+		for (clusterUser user : users) {
+			userDistances.put(user.index, user.distanceFromCentroid);
+		}
+		return userDistances;
+	}
+	
 	public List<Integer> getUsersIds() {
 		return this.users.stream().map(x -> x.index).collect(Collectors.toList());
 	}
@@ -69,10 +78,11 @@ public class Cluster {
 		this.users = newUsers;
 	}
 
-	public void addUser(SequentialSparseVector newUser, Integer id) {
+	public void addUser(SequentialSparseVector newUser, Integer id, Double distance) {
 		clusterUser temp = new clusterUser();
 		temp.index = id;
 		temp.ratings = newUser;
+		temp.distanceFromCentroid = distance;
 		this.users.add(temp);
 	}
 
