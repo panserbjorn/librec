@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-import net.librec.math.structure.AbstractVector;
 import net.librec.math.structure.SequentialSparseVector;
 
 import java.util.List;
@@ -92,6 +91,12 @@ public class Cluster {
 
 	public void setCentroid(SequentialSparseVector centroid) {
 		this.centroid = centroid;
+	}
+	
+	public void moveCentroid(int [] indices, double [] values) {
+		for (int i = 0; i < indices.length; i++) {
+			this.centroid.setAtPosition(indices[i], values[i]);
+		}
 	}
 
 	public void clear() {

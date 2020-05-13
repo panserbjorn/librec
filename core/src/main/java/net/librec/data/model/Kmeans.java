@@ -25,16 +25,16 @@ public class Kmeans {
 
 	private int NUM_CLUSTERS = 20;
 
-	private Number MIN_RATING = 0;
+	private Double MIN_RATING = 0.0;
 
-	private Number MAX_RATING = 5;
+	private Double MAX_RATING = 5.0;
 
 	private SequentialAccessSparseMatrix sparceMatrix;
 
 
 	private List<Cluster> clusters;
 
-	public Kmeans(int nUM_CLUSTERS, Number mIN_RATING, Number mAX_RATING, SequentialAccessSparseMatrix sparceMatrix, int maxIterations) {
+	public Kmeans(int nUM_CLUSTERS, Double mIN_RATING, Double mAX_RATING, SequentialAccessSparseMatrix sparceMatrix, int maxIterations) {
 		super();
 		MAX_ITERATION = maxIterations;
 		NUM_CLUSTERS = nUM_CLUSTERS;
@@ -101,7 +101,6 @@ public class Kmeans {
 	}
 
 	private void calculateCentroids() {
-		int numItems = this.sparceMatrix.columnSize();
 		for (Cluster cluster : clusters) {
 			Map<Integer,SequentialSparseVector> clusterUsers = cluster.getUsers();
 			List<Integer> itemsList = new ArrayList<Integer>();
@@ -128,8 +127,7 @@ public class Kmeans {
 				indices[i] = itemsList.get(i);
 				avg_values[i] = values.get(itemsList.get(i)).stream().mapToDouble(a->a).average().getAsDouble();
 			}
-			SequentialSparseVector new_centroid = new VectorBasedSequentialSparseVector(numItems, indices, avg_values);
-			cluster.setCentroid(new_centroid);
+			cluster.moveCentroid(indices, avg_values);
 		}
 
 	}
@@ -220,6 +218,9 @@ public class Kmeans {
 		double sum = 0.0;
 		for (int i = 0; i < thisList.size(); i++) {
 			sum += Math.pow((thisList.get(i)-thatList.get(i)), 2);
+		}
+		if(thisList.size() < this.sparceMatrix.columnSize() ) {
+			sum+=Math.pow(MAX_RATING-MIN_RATING, 2)*(this.sparceMatrix.columnSize()-thisList.size());
 		}
 		return Math.sqrt(sum);
 	}
