@@ -62,7 +62,8 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		Map<Integer, Integer> groupAssignation = this.getGroupAssignation();
 		BiMap<String, Integer> userMapping = this.getUserMappingData();
 		BiMap<String, Integer> groupMapping = this.getGroupMappingdata();
-		String outputPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/groupAssignation.csv";
+		String outputPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/groupAssignation"
+				+ Integer.toString(NumberOfGroups) + ".csv";
 		System.out.println("Result path is " + outputPath);
 		BiMap<Integer, String> inverseUserMapping = userMapping.inverse();
 		BiMap<Integer, String> inverseGroupMapping = groupMapping.inverse();
@@ -74,7 +75,8 @@ public abstract class GroupDataModel extends AbstractDataModel {
 			String groupId = inverseGroupMapping.get(groupAssignation.get(userID));
 			String distaceFromCentroid = userDistances.get(userID).toString();
 			String numRatings = Integer.toString(preferenceMatrix.row(userID).getIndices().length);
-			sb.append(userId).append(",").append(groupId).append(",").append(distaceFromCentroid).append(",").append(numRatings).append("\n");
+			sb.append(userId).append(",").append(groupId).append(",").append(distaceFromCentroid).append(",")
+					.append(numRatings).append("\n");
 		}
 		String resultData = sb.toString();
 		// save resultData
