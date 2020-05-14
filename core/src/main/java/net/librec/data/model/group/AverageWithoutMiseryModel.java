@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import jdk.internal.org.objectweb.asm.tree.analysis.Value;
 import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
@@ -27,8 +28,12 @@ public class AverageWithoutMiseryModel extends GroupDataModel {
 
 		ArrayList<KeyValue<Integer, Double>> groupRatings = new ArrayList<KeyValue<Integer, Double>>();
 		for (Entry<Integer, List<Double>> itemRatings : groupScoresByItem.entrySet()) {
-			Double rating = itemRatings.getValue().stream().filter(item -> item > miseryThreshold).mapToDouble(a -> a).average().getAsDouble();
-			groupRatings.add(new KeyValue<Integer, Double>(itemRatings.getKey(), rating));
+			if (itemRatings.getValue().parallelStream().anyMatch(value -> value < miseryThreshold)) {
+				groupRatings.add(new KeyValue<Integer, Double>(itemRatings.getKey(), 0.0));
+			} else {
+				Double rating = itemRatings.getValue().stream().mapToDouble(a -> a).average().getAsDouble();
+				groupRatings.add(new KeyValue<Integer, Double>(itemRatings.getKey(), rating));
+			}	
 		}
 
 		return groupRatings;

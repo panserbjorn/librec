@@ -127,6 +127,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 				this.groupMapping = retriever.getGroupMapping();
 				this.Groups = retriever.getGroups();
 				this.Groupassignation = retriever.getGroupAssignation();
+				this.NumberOfGroups= Groups.size();
 			}
 			LOG.info("Groups Built sucessfully:");
 			for (Integer group : this.Groups.keySet()) {

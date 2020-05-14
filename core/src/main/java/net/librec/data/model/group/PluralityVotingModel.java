@@ -43,6 +43,9 @@ public class PluralityVotingModel extends GroupDataModel {
 			}
 			List<Entry<Integer, Integer>> votingResult = voting.entrySet().stream()
 					.sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).collect(Collectors.toList());
+			if(votingResult.isEmpty()) {
+				break;
+			}
 			Integer highestVoting = votingResult.get(0).getValue();
 			List<Integer> highestRankedList = votingResult.stream().filter(item -> item.getValue() == highestVoting)
 					.map(item -> item.getKey()).collect(Collectors.toList());

@@ -5,9 +5,11 @@ package net.librec.data.model.group;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
@@ -28,6 +30,7 @@ public class FairnessModel extends GroupDataModel {
 		groupRatingByMember.forEach(memberRating -> memberRating.sort(Collections.reverseOrder(Map.Entry.comparingByValue())));
 
 		List<Integer> rank = new ArrayList<Integer>();
+		Set<Integer> emptyMembers = new HashSet<Integer>();
 
 		int index = 0;
 		while (rank.size() < topN) {
@@ -37,6 +40,12 @@ public class FairnessModel extends GroupDataModel {
 					.findFirst();
 			if (item.isPresent()) {
 				rank.add(item.get().getKey());
+			} else {
+				emptyMembers.add(positionMember);
+			}
+			if(emptyMembers.size() == groupRatingByMember.size()) { 
+//				All members have expressed all their votes.
+				break;
 			}
 		}
 

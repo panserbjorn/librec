@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
@@ -26,8 +27,13 @@ public class ApprovalVotingModel extends GroupDataModel {
 		
 		Map<Integer, Integer> voting = new HashMap<Integer, Integer>();
 		for (Entry<Integer,List<KeyValue<Integer, Double>>> memberRatings : groupInidividualRatings.entrySet()) {
-			memberRatings.getValue().stream().filter(item -> item.getValue() > approvalThreshold)
-					.forEach(item -> voting.compute(item.getKey(), (k, v) -> (v == null) ? 1 : v + 1));
+//			It is wrong to filter. I should add a 0 as vote instead of 1. 
+			memberRatings.getValue().forEach(item -> {if (item.getValue() > approvalThreshold) {voting.compute(item.getKey(), (k, v) -> (v == null) ? 1 : v + 1);}else {voting.compute(item.getKey(), (k, v) -> (v == null) ? 1 : v);} } );
+//			List<KeyValue<Integer, Double>> filtered = memberRatings.getValue().stream().filter(item -> item.getValue() > approvalThreshold).collect(Collectors.toList());
+//					.forEach(item -> voting.compute(item.getKey(), (k, v) -> (v == null) ? 1 : v + 1));
+//			for (KeyValue<Integer, Double> keyValue : filtered) {
+//				voting.compute(keyValue.getKey(), (k, v) -> (v == null) ? 1 : v + 1);
+//			}
 		}
 
 		ArrayList<KeyValue<Integer, Double>> groupRanking = new ArrayList<KeyValue<Integer, Double>>();
