@@ -135,7 +135,7 @@ generic=net.librec.filter.GenericRecommendedFilter
 #Group
 group=net.librec.recommender.GroupRecommender
 addUtil=net.librec.data.model.group.AdditiveUtilitarianModel
-leastM=net.librec.data.model.group.LesatMiseryModel
+leastM=net.librec.data.model.group.LeastMiseryModel
 mostP=net.librec.data.model.group.MostPleasureModel
 multUtil=net.librec.data.model.group.MultiplicativeUtilitarianModel
 borda=net.librec.data.model.group.BordaCountModel
@@ -143,4 +143,4 @@ copeland=net.librec.data.model.group.CopelandRuleModel
 plurality=net.librec.data.model.group.PluralityVotingModel
 approval=net.librec.data.model.group.ApprovalVotingModel
 avgWOM=net.librec.data.model.group.AverageWithoutMiseryModel
-fairness=net.librec.data.model.group.FarinessModel
+fairness=net.librec.data.model.group.FairnessModel
