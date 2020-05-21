@@ -144,3 +144,5 @@ plurality=net.librec.data.model.group.PluralityVotingModel
 approval=net.librec.data.model.group.ApprovalVotingModel
 avgWOM=net.librec.data.model.group.AverageWithoutMiseryModel
 fairness=net.librec.data.model.group.FairnessModel
+external=net.librec.data.convertor.GroupDataRetriever
+kmeans=net.librec.data.model.Kmeans

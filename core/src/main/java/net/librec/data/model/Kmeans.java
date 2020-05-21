@@ -10,6 +10,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+
+import net.librec.conf.Configuration;
+import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.math.structure.VectorBasedSequentialSparseVector;
@@ -19,7 +24,7 @@ import net.librec.math.structure.VectorBasedSequentialSparseVector;
  * 
  *         This class performs the KMeans clustering algorithm
  */
-public class Kmeans {
+public class Kmeans extends GroupBuilder{
 	
 	private int MAX_ITERATION = 30;
 
@@ -30,17 +35,21 @@ public class Kmeans {
 	private Double MAX_RATING = 5.0;
 
 	private SequentialAccessSparseMatrix sparceMatrix;
-
+	
+	private BiMap<String, Integer>groupMapping ;
 
 	private List<Cluster> clusters;
 
-	public Kmeans(int nUM_CLUSTERS, Double mIN_RATING, Double mAX_RATING, SequentialAccessSparseMatrix sparceMatrix, int maxIterations) {
-		super();
-		MAX_ITERATION = maxIterations;
-		NUM_CLUSTERS = nUM_CLUSTERS;
-		MIN_RATING = mIN_RATING;
-		MAX_RATING = mAX_RATING;
-		this.sparceMatrix = sparceMatrix;
+	
+	@Override
+	public void setUp(DataFrame df, SequentialAccessSparseMatrix preferences) {
+		super.setUp(df, preferences);
+		this.NUM_CLUSTERS = this.conf.getInt("group.number", 10);
+		this.MIN_RATING = df.getRatingScale().get(0);
+		this.MAX_RATING = df.getRatingScale().get(df.getRatingScale().size() - 1);
+		this.MAX_ITERATION = this.conf.getInt("kmeans.iterations", 30);
+		this.groupMapping = HashBiMap.create();
+		this.sparceMatrix = preferences;
 		this.clusters = new ArrayList<Cluster>();
 	}
 
@@ -226,7 +235,7 @@ public class Kmeans {
 	}
 	
 	
-	public Map<Integer, List<Integer>> getGroupMapping(){
+	public Map<Integer, List<Integer>> getGroups(){
 		Map<Integer,List<Integer>> groups = new HashMap<Integer, List<Integer>>();
 		for (int i = 0; i < clusters.size(); i++) {
 			groups.put(i, clusters.get(i).getUsersIds());
@@ -234,13 +243,34 @@ public class Kmeans {
 		return groups;
 	}
 
-	public Map<Integer, Double> getUsersDistances() {
-		Map<Integer, Double> userDistances = new HashMap<Integer, Double>();
+	public Map<Integer, String> getUsersDistances() {
+		Map<Integer, String> userDistances = new HashMap<Integer, String>();
 		for (int i = 0; i < clusters.size(); i++) {
 			Cluster clust = clusters.get(i);
 			userDistances.putAll(clust.getUserDistances());
 		}
 		return userDistances;
+	}
+
+	@Override
+	public void generateGroups() {
+		this.init();
+		this.calculate();
+		for (int i = 0 ; i < this.clusters.size(); i++) {
+			this.groupMapping.put(Integer.toString(i), i);
+		}
+	}
+
+	@Override
+	public BiMap<String, Integer> getGroupMapping() {
+		return this.groupMapping;
+	}
+
+	@Override
+	public List<Map<Integer, String>> getMemberStatistics() {
+		List<Map<Integer, String>> statistics = new ArrayList<Map<Integer,String>>();
+		statistics.add(this.getUsersDistances());
+		return statistics;
 	}
 
 }

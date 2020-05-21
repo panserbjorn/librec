@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.BiMap;
@@ -27,7 +28,9 @@ import net.librec.math.structure.DataSet;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.recommender.item.KeyValue;
+import net.librec.util.DriverClassUtil;
 import net.librec.util.FileUtil;
+import net.librec.util.ReflectionUtil;
 
 /**
  * @author Joaqui This class will be the abstract class in charge of generating
@@ -39,7 +42,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 	private Map<Integer, Integer> Groupassignation;
 	private Map<Integer, List<Integer>> Groups;
 	private BiMap<String, Integer> groupMapping;
-	private Map<Integer, Double> userDistances;
+	private List<Map<Integer, String>> userStatistics;
 	private int NumberOfGroups;
 
 	/**
@@ -73,10 +76,16 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		for (Integer userID : groupAssignation.keySet()) {
 			String userId = inverseUserMapping.get(userID);
 			String groupId = inverseGroupMapping.get(groupAssignation.get(userID));
-			String distaceFromCentroid = userDistances.get(userID).toString();
+			StringJoiner joiner = new StringJoiner(",");
+			for (Map<Integer,String> stat : this.userStatistics) {
+				joiner.add(stat.get(userID)); 	
+			}
 			String numRatings = Integer.toString(preferenceMatrix.row(userID).getIndices().length);
-			sb.append(userId).append(",").append(groupId).append(",").append(distaceFromCentroid).append(",")
-					.append(numRatings).append("\n");
+			sb.append(userId).append(",").append(groupId).append(",");
+			if (!joiner.toString().isEmpty()) {
+				sb.append(joiner.toString()).append(",");
+			}
+			sb.append(numRatings).append("\n");
 		}
 		String resultData = sb.toString();
 		// save resultData
@@ -87,6 +96,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void buildConvert() throws LibrecException {
 		String[] inputDataPath = conf.get(Configured.CONF_DATA_INPUT_PATH).trim().split(":");
@@ -97,37 +107,27 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		dataConvertor = new TextDataConvertor(dataColumnFormat, inputDataPath, conf.get("data.convert.sep", "[\t;, ]"));
 		try {
 			dataConvertor.processData();
-//			TODO: Add this to the configuration list of parameters
-			if (!conf.getBoolean("group.external", false)) {
-				DataFrame rawData = dataConvertor.getMatrix();
-				SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
-//				TODO: Add this to the configuration list of parameters
-				this.NumberOfGroups = this.conf.getInt("group.number", 10);
-				int maxIterations = this.conf.getInt("kmeans.iterations", 30);
-				Kmeans groupBuilder = new Kmeans(this.NumberOfGroups, rawData.getRatingScale().get(0),
-						rawData.getRatingScale().get(rawData.getRatingScale().size() - 1), preferenceMatrix,
-						maxIterations);
-				groupBuilder.init();
-				groupBuilder.calculate();
-				this.Groupassignation = groupBuilder.getAssignation();
-				this.Groups = groupBuilder.getGroupMapping();
-				this.userDistances = groupBuilder.getUsersDistances();
-//				Build the groupMapping data
-				for (Integer group : this.Groups.keySet()) {
-					this.groupMapping.put(Integer.toString(group), group);
-				}
-				if (conf.getBoolean("group.save", false)) {
-					this.saveGroups();
-				}
-			} else {
-//				TODO: Add this to the configuration list of parameters
-				String groupAssignationPath = conf.get("group.external.path");
-				GroupDataRetriever retriever = new GroupDataRetriever(groupAssignationPath);
-				retriever.process();
-				this.groupMapping = retriever.getGroupMapping();
-				this.Groups = retriever.getGroups();
-				this.Groupassignation = retriever.getGroupAssignation();
-				this.NumberOfGroups= Groups.size();
+			DataFrame rawData = dataConvertor.getMatrix();
+			SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
+			
+			Class<? extends GroupBuilder> builderLCass;
+			try {
+				builderLCass = (Class<? extends GroupBuilder>) DriverClassUtil
+						.getClass(conf.get("group.builder","kmeans"));
+			} catch (ClassNotFoundException e) {
+				throw new LibrecException("Group Builder class not found");
+			}
+			
+			GroupBuilder groupBuilder = ReflectionUtil.newInstance((Class<GroupBuilder>) builderLCass, conf);
+			groupBuilder.setUp(rawData, preferenceMatrix);
+			groupBuilder.generateGroups();
+			this.groupMapping = groupBuilder.getGroupMapping();
+			this.Groups = groupBuilder.getGroups();
+			this.userStatistics = groupBuilder.getMemberStatistics();
+			this.Groupassignation = groupBuilder.getAssignation();
+			this.NumberOfGroups= Groups.size();
+			if (conf.getBoolean("group.save", false)) {
+				this.saveGroups();
 			}
 			LOG.info("Groups Built sucessfully:");
 			for (Integer group : this.Groups.keySet()) {
@@ -183,6 +183,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 
 	@Override
 	protected void buildSplitter() throws LibrecException {
+//		TODO Change this so that it can use any data splitter
 		dataSplitter = new GroupDataSplitter(this.Groupassignation, this.Groups, conf);
 
 		dataSplitter.setDataConvertor(dataConvertor);

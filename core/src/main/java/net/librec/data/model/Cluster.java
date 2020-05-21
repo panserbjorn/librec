@@ -53,10 +53,10 @@ public class Cluster {
 		return userMap;
 	}
 	
-	public Map<Integer, Double> getUserDistances(){
-		Map<Integer, Double> userDistances = new HashMap<Integer, Double>();
+	public Map<Integer, String> getUserDistances(){
+		Map<Integer, String> userDistances = new HashMap<Integer, String>();
 		for (clusterUser user : users) {
-			userDistances.put(user.index, user.distanceFromCentroid);
+			userDistances.put(user.index, user.distanceFromCentroid.toString());
 		}
 		return userDistances;
 	}

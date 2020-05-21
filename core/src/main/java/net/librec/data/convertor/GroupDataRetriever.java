@@ -14,13 +14,16 @@ import java.util.Map;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
+import net.librec.conf.Configuration;
+import net.librec.data.model.GroupBuilder;
 import net.librec.math.structure.DataFrame;
+import net.librec.math.structure.SequentialAccessSparseMatrix;
 
 /**
  * @author Joaqui
  *
  */
-public class GroupDataRetriever {
+public class GroupDataRetriever extends GroupBuilder{
 
 	private String path;
 
@@ -31,12 +34,11 @@ public class GroupDataRetriever {
 	private Map<Integer, List<Integer>> groups;
 
 	private BufferedReader br;
-
-	/**
-	 * 
-	 */
-	public GroupDataRetriever(String path) {
-		this.path = path;
+	
+	@Override
+	public void setUp(DataFrame df, SequentialAccessSparseMatrix preferences) {
+		super.setUp(df, preferences);
+		this.path = conf.get("group.external.path");
 		this.assignations = new HashMap<Integer, Integer>();
 		this.groups = new HashMap<Integer, List<Integer>>();
 		this.groupMapping = HashBiMap.create();
@@ -78,6 +80,16 @@ public class GroupDataRetriever {
 
 	public BiMap<String, Integer> getGroupMapping() {
 		return this.groupMapping;
+	}
+
+	@Override
+	public void generateGroups() {
+		this.process();
+	}
+
+	@Override
+	public Map<Integer, Integer> getAssignation() {
+		return this.getGroupAssignation();
 	}
 
 }
