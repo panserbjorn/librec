@@ -147,3 +147,5 @@ fairness=net.librec.data.model.group.FairnessModel
 external=net.librec.data.convertor.GroupDataRetriever
 kmeans=net.librec.data.model.Kmeans
 groupSplitter=net.librec.data.splitter.GroupDataSplitter
+randomGroups=net.librec.data.model.RandomGroupBuilder
+similarGroups=net.librec.data.model.SimilarUsersGroupBuilder
