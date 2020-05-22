@@ -39,7 +39,11 @@ public class Kmeans extends GroupBuilder{
 	private BiMap<String, Integer>groupMapping ;
 
 	private List<Cluster> clusters;
-
+	
+	@Override
+	public boolean isExhaustive() {
+		return true;
+	}
 	
 	@Override
 	public void setUp(DataFrame df, SequentialAccessSparseMatrix preferences) {

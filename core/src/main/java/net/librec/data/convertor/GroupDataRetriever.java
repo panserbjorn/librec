@@ -36,6 +36,12 @@ public class GroupDataRetriever extends GroupBuilder{
 	private BufferedReader br;
 	
 	@Override
+	public boolean isExhaustive() {
+		boolean exhaustive = conf.getBoolean("group.external.exhaustive", false);
+		return exhaustive;
+	}
+	
+	@Override
 	public void setUp(DataFrame df, SequentialAccessSparseMatrix preferences) {
 		super.setUp(df, preferences);
 		this.path = conf.get("group.external.path");

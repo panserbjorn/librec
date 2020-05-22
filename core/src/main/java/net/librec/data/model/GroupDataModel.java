@@ -25,6 +25,7 @@ import net.librec.data.convertor.TextDataConvertor;
 import net.librec.data.splitter.GroupDataSplitter;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
+import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.recommender.item.KeyValue;
@@ -44,6 +45,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 	private BiMap<String, Integer> groupMapping;
 	private List<Map<Integer, String>> userStatistics;
 	private int NumberOfGroups;
+	private boolean exhaustiveGroups = false;
 
 	/**
 	 * Empty constructor.
@@ -115,7 +117,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 				builderLCass = (Class<? extends GroupBuilder>) DriverClassUtil
 						.getClass(conf.get("group.builder","kmeans"));
 			} catch (ClassNotFoundException e) {
-				throw new LibrecException("Group Builder class not found");
+				throw new LibrecException(e);
 			}
 			
 			GroupBuilder groupBuilder = ReflectionUtil.newInstance((Class<GroupBuilder>) builderLCass, conf);
@@ -126,6 +128,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 			this.userStatistics = groupBuilder.getMemberStatistics();
 			this.Groupassignation = groupBuilder.getAssignation();
 			this.NumberOfGroups= Groups.size();
+			this.exhaustiveGroups = groupBuilder.isExhaustive();
 			if (conf.getBoolean("group.save", false)) {
 				this.saveGroups();
 			}
@@ -188,9 +191,38 @@ public abstract class GroupDataModel extends AbstractDataModel {
 
 		dataSplitter.setDataConvertor(dataConvertor);
 		dataSplitter.splitData();
-		trainDataSet = dataSplitter.getTrainData();
-		testDataSet = dataSplitter.getTestData();
+		
+		if (this.exhaustiveGroups) {
+			trainDataSet = dataSplitter.getTrainData();
+			testDataSet = dataSplitter.getTestData();
+		} else {
+			this.makeSafeSplit(dataSplitter.getTrainData(), dataSplitter.getTestData());
+		}
+	}
 
+	private void makeSafeSplit(SequentialAccessSparseMatrix trainData, SequentialAccessSparseMatrix testData) {
+		SequentialAccessSparseMatrix preferences = this.dataConvertor.getPreferenceMatrix(conf);
+		SequentialAccessSparseMatrix train = new SequentialAccessSparseMatrix(preferences);
+		for (MatrixEntry entry : testData) {
+			SequentialSparseVector trainRow = train.row(entry.row());
+			int[] indices = trainRow.getIndices();
+			int position = -1;
+			for (int i = 0; i < indices.length; i++) {
+				if (indices[i] == entry.column()) {
+					position = i;
+					break;
+				}
+			}
+			if (this.Groupassignation.containsKey(entry.row())) {
+				train.setAtColumnPosition(entry.row(), position, 0.0D);
+			} else {
+				testData.setAtColumnPosition(entry.row(), entry.columnPosition(), 0.0D);
+			}
+		}
+		train.reshape();
+		testData.reshape();
+		this.trainDataSet = train;
+		this.testDataSet = testData;
 	}
 
 	protected static Map<Integer, List<Double>> fromMemberToItemScores(
