@@ -13,7 +13,6 @@ import java.util.Random;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
-import net.librec.conf.Configuration;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;

@@ -20,7 +20,7 @@ import com.google.common.collect.Table;
 import net.librec.common.LibrecException;
 import net.librec.conf.Configuration;
 import net.librec.conf.Configured;
-import net.librec.data.convertor.GroupDataRetriever;
+import net.librec.data.DataSplitter;
 import net.librec.data.convertor.TextDataConvertor;
 import net.librec.data.splitter.GroupDataSplitter;
 import net.librec.math.structure.DataFrame;
@@ -186,18 +186,28 @@ public abstract class GroupDataModel extends AbstractDataModel {
 
 	@Override
 	protected void buildSplitter() throws LibrecException {
-//		TODO Change this so that it can use any data splitter
-		dataSplitter = new GroupDataSplitter(this.Groupassignation, this.Groups, conf);
-
-		dataSplitter.setDataConvertor(dataConvertor);
-		dataSplitter.splitData();
+		String splitter = conf.get("data.model.splitter");
 		
-		if (this.exhaustiveGroups) {
-			trainDataSet = dataSplitter.getTrainData();
-			testDataSet = dataSplitter.getTestData();
-		} else {
-			this.makeSafeSplit(dataSplitter.getTrainData(), dataSplitter.getTestData());
-		}
+		try {
+            if (dataSplitter == null) {
+                dataSplitter = (DataSplitter) ReflectionUtil.newInstance(DriverClassUtil.getClass(splitter), conf);
+                if (dataSplitter instanceof GroupDataSplitter) {
+                	((GroupDataSplitter) dataSplitter).setGroupInfo(this.Groupassignation, this.Groups);
+                }
+            }
+            if (dataSplitter != null) {
+                dataSplitter.setDataConvertor(dataConvertor);
+                dataSplitter.splitData();
+                if (this.exhaustiveGroups) {
+        			trainDataSet = dataSplitter.getTrainData();
+        			testDataSet = dataSplitter.getTestData();
+        		} else {
+        			this.makeSafeSplit(dataSplitter.getTrainData(), dataSplitter.getTestData());
+        		}
+            }
+        } catch (ClassNotFoundException e) {
+            throw new LibrecException(e);
+        }
 	}
 
 	private void makeSafeSplit(SequentialAccessSparseMatrix trainData, SequentialAccessSparseMatrix testData) {

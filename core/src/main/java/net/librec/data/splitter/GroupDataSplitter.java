@@ -24,9 +24,17 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 	private Map<Integer, Integer> groupAssignation;
 
 	private Map<Integer, List<Integer>> groups;
+	
+	public GroupDataSplitter() {
+		
+	}
 
 	public GroupDataSplitter(Map<Integer, Integer> groupAssignation, Map<Integer, List<Integer>> groups, Configuration conf) {
 		this.conf = conf;
+		this.setGroupInfo(groupAssignation, groups);
+	}
+	
+	public void setGroupInfo(Map<Integer, Integer> groupAssignation, Map<Integer, List<Integer>> groups) {
 		this.groupAssignation = groupAssignation;
 		this.groups = groups;
 	}

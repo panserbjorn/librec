@@ -14,7 +14,6 @@ import java.util.Map;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
-import net.librec.conf.Configuration;
 import net.librec.data.model.GroupBuilder;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
