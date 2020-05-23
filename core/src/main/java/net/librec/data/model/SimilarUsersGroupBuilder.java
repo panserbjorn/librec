@@ -4,6 +4,7 @@
 package net.librec.data.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.math.structure.SymmMatrix;
+import net.librec.recommender.item.KeyValue;
 import net.librec.similarity.AbstractRecommenderSimilarity;
 import net.librec.similarity.PCCSimilarity;
 import net.librec.similarity.RecommenderSimilarity;
@@ -50,9 +52,6 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	public void setUp(DataFrame df, SequentialAccessSparseMatrix preferences) {
 		super.setUp(df, preferences);
 		int numUsers = preferences.rowSize();
-
-//		TODO Need to change this so that it is not a recommender similarity. 
-		AbstractRecommenderSimilarity similarityMetric = new PCCSimilarity();
 		
 		PearsonsCorrelation pcc = new PearsonsCorrelation();
 
@@ -70,12 +69,12 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 					if (thatVector.getNumEntries() < 5) {
 						continue;
 					}
+//					TODO I could change this for checking that the length of the first list in the common items is greater than 5
 					if (!shareMinimumItems(thisVector.getIndices(), thatVector.getIndices())) {
 						continue;
 					}
 					List<double[]> commonItems = getCommonItems(thisVector, thatVector);
 					double sim = pcc.correlation(commonItems.get(0), commonItems.get(1));
-//					double sim = similarityMetric.getCorrelation(thisVector, thatVector);
 					if (!Double.isNaN(sim) && sim != 0.0) {
 						similarity.set(thisIndex, thatIndex, sim);
 					}
@@ -143,45 +142,56 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	public void generateGroups() {
 		int groupSize = conf.getInt("group.ludovicos.groupSize", 2);
 		int numUsers = preferences.rowSize();
-		Map<Integer, List<Integer>> similarUserCache = new HashMap<Integer, List<Integer>>();
+		Map<Integer, List<KeyValue<Integer, Double>>> similarUserCache = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
 		Set<Integer> availableUsers = new HashSet<Integer>(IntStream.range(0, numUsers).boxed().collect(Collectors.toList()));
 		double similarityThreshold = conf.getDouble("group.ludovicos.similThresh", 0.27D);
 		for (Iterator<Integer> userIterator = availableUsers.iterator();userIterator.hasNext();) {
 			Integer user = userIterator.next(); 
-			List<Integer> similarUsers = getSimilarUsers(user, similarityThreshold);
+			List<KeyValue<Integer, Double>> similarUsers = getSimilarUsers(user, similarityThreshold);
 			similarUserCache.put(user, similarUsers);
 			if (similarUsers.size() < groupSize) {
 				userIterator.remove();
 			}
 		}
-		Set<Integer> copyAvailableUsers = new HashSet<Integer>(availableUsers);
-		for (Iterator<Integer> userIterator = copyAvailableUsers.iterator();userIterator.hasNext();) {
+		List<Integer> copyAvailableUsers = new ArrayList<Integer>(availableUsers);
+		Collections.shuffle(copyAvailableUsers);
+		for (Iterator<Integer> userIterator = copyAvailableUsers.iterator(); userIterator.hasNext();) {
 			Integer user = userIterator.next(); 
 			if (!availableUsers.contains(user) ) {
 				continue;
 			}
-			List<Integer> similarUsers = similarUserCache.get(user);
-			List<Integer> currentSimilarUsers = similarUsers.parallelStream().filter(elem -> availableUsers.contains(elem)).collect(Collectors.toList());
+			List<KeyValue<Integer, Double>> similarUsers = similarUserCache.get(user);
+			List<KeyValue<Integer, Double>> currentSimilarUsers = similarUsers.parallelStream().filter(elem -> availableUsers.contains(elem.getKey())).collect(Collectors.toList());
 			if (currentSimilarUsers.size() > groupSize){
-				System.out.println(currentSimilarUsers.size());
-				System.out.println(groupSize);
-				List<int[]> combinations = getCombinations(currentSimilarUsers,groupSize);
-				System.out.println(combinations.size());
-				for (int[] possibelGroup : combinations) {
-					if (correctGroup(possibelGroup,availableUsers, similarityThreshold)) {
-						List<Integer> groupList = new ArrayList<Integer>();
-						for (int member : possibelGroup) {
-							groupList.add(member);
-							availableUsers.remove(member);
-						}
-						groupList.add(user);
-						this.groups.put(groups.size(), groupList);
+				List<Integer> currentGroup = new ArrayList<Integer>();
+				currentGroup.add(user);
+				for (KeyValue<Integer, Double> otherUser : currentSimilarUsers) {
+					if (compatibleWithGroup(currentGroup,otherUser, similarityThreshold)) {
+						currentGroup.add(otherUser.getKey());
+					}
+					if (currentGroup.size() == groupSize) {
 						break;
 					}
 				}
+				if (currentGroup.size() == groupSize) {
+					int groupNumber = groups.size();
+					this.groupMapping.put(Integer.toString(groupNumber), groupNumber);
+					this.groups.put(groupNumber, currentGroup);
+					for (Integer member : currentGroup) {
+						availableUsers.remove(member);
+					}
+				}
 			}
-			availableUsers.remove(user);
 		}
+	}
+
+	private boolean compatibleWithGroup(List<Integer> currentGroup, KeyValue<Integer, Double> otherUser, double similarityThreshold) {
+		for (Integer user : currentGroup) {
+			if (similarity.get(user, otherUser.getKey()) < similarityThreshold) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private boolean correctGroup(int[] possibelGroup, Set<Integer> availableUsers, double similarityTreshold) {
@@ -237,33 +247,37 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	    return result;
 	}
 
-	private List<Integer> getSimilarUsers(Integer user, double similarityThreshold) {
+	private List<KeyValue<Integer, Double>> getSimilarUsers(Integer user, double similarityThreshold) {
 		Map<Integer, Double> row = this.similarity.row(user);
-		List<Integer> similarUsers = new ArrayList<Integer>();
+		List<KeyValue<Integer, Double>> similarUsers = new ArrayList<KeyValue<Integer, Double>>();
 		for (Integer otherUser : row.keySet()) {
-			if (row.get(otherUser) >= similarityThreshold) {
-				similarUsers.add(otherUser);
+			if (otherUser != user & row.get(otherUser) >= similarityThreshold) {
+				similarUsers.add(new KeyValue<Integer, Double>(otherUser, row.get(otherUser)));
 			}
 		}
+		Collections.sort(similarUsers, Map.Entry.comparingByValue());
 		return similarUsers;
 	}
 
 	@Override
 	public Map<Integer, Integer> getAssignation() {
-		// TODO Auto-generated method stub
-		return null;
+		Map<Integer, Integer> groupAssignation = new HashMap<Integer, Integer>();
+		for (Integer group : groups.keySet()) {
+			for (Integer member : groups.get(group)) {
+				groupAssignation.put(member, group);
+			}
+		}
+		return groupAssignation;
 	}
 
 	@Override
 	public Map<Integer, List<Integer>> getGroups() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.groups;
 	}
 
 	@Override
 	public BiMap<String, Integer> getGroupMapping() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.groupMapping;
 	}
 
 }

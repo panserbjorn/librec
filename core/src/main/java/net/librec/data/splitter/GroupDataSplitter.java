@@ -55,7 +55,10 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 //		Get all ratings by group
 		for (MatrixEntry matrixEntry : preferenceMatrix) {
 //			TODO: I could add or maintain only the items that have been rated by a certain number or percentage of group members
-			groupRatings.get(groupAssignation.get(matrixEntry.row())).add(matrixEntry.column());
+
+			if (groupAssignation.containsKey(matrixEntry.row())) {
+				groupRatings.get(groupAssignation.get(matrixEntry.row())).add(matrixEntry.column());
+			}
 		}
 
 //		Determine the items that will be set to test
@@ -89,8 +92,15 @@ public class GroupDataSplitter extends AbstractDataSplitter {
 
 //		Set test and train items
 		for (MatrixEntry matrixEntry : preferenceMatrix) {
-			if (testGroupRating.get(groupAssignation.get(matrixEntry.row())).contains(matrixEntry.column())) {
-				trainMatrix.setAtColumnPosition(matrixEntry.row(), matrixEntry.columnPosition(), 0.0D);
+			if (groupAssignation.containsKey(matrixEntry.row())) {
+				Integer groupNumber = groupAssignation.get(matrixEntry.row());
+				Set<Integer> groupTestItems = testGroupRating.get(groupNumber);
+				Integer item = matrixEntry.column();
+				if (groupTestItems.contains(item)) {
+					trainMatrix.setAtColumnPosition(matrixEntry.row(), matrixEntry.columnPosition(), 0.0D);
+				} else {
+					testMatrix.setAtColumnPosition(matrixEntry.row(), matrixEntry.columnPosition(), 0.0D);
+				}
 			} else {
 				testMatrix.setAtColumnPosition(matrixEntry.row(), matrixEntry.columnPosition(), 0.0D);
 			}
