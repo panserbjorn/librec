@@ -23,6 +23,7 @@ import net.librec.data.structure.LibrecDataList;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.MatrixEntry;
 import net.librec.math.structure.SequentialAccessSparseMatrix;
+import net.librec.math.structure.SequentialSparseVector;
 import net.librec.recommender.cf.ItemKNNRecommender;
 import net.librec.recommender.item.ContextKeyValueEntry;
 import net.librec.recommender.item.GenericRecommendedItem;
@@ -135,53 +136,78 @@ public class GroupRecommender extends AbstractRecommender {
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
 		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 
+		Map<Integer, Map<Integer, Double>> groupsAggregationsMap = new HashMap<Integer, Map<Integer, Double>>();
+		Map<Integer, ArrayList<KeyValue<Integer, Double>>> groupAggregations = new HashMap<Integer, ArrayList<KeyValue<Integer, Double>>>();
+
 		Boolean groupRec = conf.getBoolean("rec.eval.group", false);
+
+		for (Integer group : groups.keySet()) {
+			Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
+			Set<Integer> groupItems = new HashSet<Integer>();
+			for (Integer member : groups.get(group)) {
+				List<KeyValue<Integer, Double>> memberRatings = new ArrayList<KeyValue<Integer, Double>>(
+						individualRecomm.getKeyValueListByContext(member));
+				singleGroupRatings.put(member, memberRatings);
+				memberRatings.forEach(kv -> groupItems.add(kv.getKey()));
+			}
+
+			if (!isRanking) {
+//				 Collect data from train for the group if is rating
+				for (Integer item : groupItems) {
+					SequentialSparseVector column = this.trainMatrix.column(item);
+					int[] indices = column.getIndices();
+					List<Integer> groupUsers = groups.get(group);
+					for (int i = 0; i < indices.length; i++) {
+						int userRated = indices[i];
+						if (groupUsers.contains(userRated)) {
+							Double value = column.getAtPosition(i);
+							if (singleGroupRatings.containsKey(userRated)) {
+								singleGroupRatings.get(userRated).add(new KeyValue<Integer, Double>(item, value));
+							} else if (groupRec) {
+								ArrayList<KeyValue<Integer, Double>> memberRatings = new ArrayList<KeyValue<Integer, Double>>();
+								memberRatings.add(new KeyValue<Integer, Double>(item, value));
+								singleGroupRatings.put(userRated, memberRatings);
+							}
+						}
+					}
+				}
+			}
+
+			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel())
+					.computeGroupModel(singleGroupRatings);
+			groupScore.sort(Map.Entry.comparingByKey());
+			Map<Integer, Double> groupScoreMap = new HashMap<Integer, Double>();
+			groupScore.forEach(kv -> groupScoreMap.put(kv.getKey(), kv.getValue()));
+			groupAggregations.put(group, groupScore);
+			groupsAggregationsMap.put(group, groupScoreMap);
+		}
+
 		if (groupRec) {
 			RecommendedList recommendedList = new RecommendedList(groups.keySet().size());
 
 			for (Integer group : groups.keySet()) {
-				Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
-				for (Integer member : groups.get(group)) {
-					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
-					singleGroupRatings.put(member, memberRatings);
-				}
-				ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel())
-						.computeGroupModel(singleGroupRatings);
-				groupScore.sort(Map.Entry.comparingByKey());
+				ArrayList<KeyValue<Integer, Double>> groupScore = groupAggregations.get(group);
 				recommendedList.addList(groupScore);
 			}
 
 			return recommendedList;
 		} else {
 			RecommendedList recommendedList = new RecommendedList(individualRecomm.size());
-			Map<Integer, Map<Integer, Double>> groupsAggregations = new HashMap<Integer, Map<Integer, Double>>();
-
-			for (Integer group : groups.keySet()) {
-				Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
-				for (Integer member : groups.get(group)) {
-					List<KeyValue<Integer, Double>> memberRatings = individualRecomm.getKeyValueListByContext(member);
-					singleGroupRatings.put(member, memberRatings);
-				}
-				ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel())
-						.computeGroupModel(singleGroupRatings);
-				Map<Integer, Double> groupScoreMap = new HashMap<Integer, Double>();
-				groupScore.forEach(kv -> groupScoreMap.put(kv.getKey(), kv.getValue()));
-				groupsAggregations.put(group, groupScoreMap);
-			}
 
 			for (int i = 0; i < individualRecomm.size(); i++) {
-				ArrayList<KeyValue<Integer,Double>> scores = new ArrayList<KeyValue<Integer,Double>>();
+				ArrayList<KeyValue<Integer, Double>> scores = new ArrayList<KeyValue<Integer, Double>>();
 				Set<Integer> keySetByContext = individualRecomm.getKeySetByContext(i);
 				for (Integer item : keySetByContext) {
 					Integer groupBelonging = groupAssignation.get(i);
-					Double score = groupsAggregations.get(groupBelonging).get(item);
-					scores.add(new KeyValue<Integer, Double>(item,score));
+					Double score = groupsAggregationsMap.get(groupBelonging).get(item);
+					scores.add(new KeyValue<Integer, Double>(item, score));
 				}
 				scores.sort(Map.Entry.comparingByKey());
 				recommendedList.addList(scores);
 			}
 			return recommendedList;
 		}
+
 	}
 
 	@Override
@@ -231,7 +257,8 @@ public class GroupRecommender extends AbstractRecommender {
 		if (recommendedList != null && recommendedList.size() > 0) {
 			List<RecommendedItem> groupItemList = new ArrayList<>();
 			Iterator<ContextKeyValueEntry> recommendedEntryIter = recommendedList.iterator();
-			if (userMappingData != null && userMappingData.size() > 0 && itemMappingData != null && itemMappingData.size() > 0) {
+			if (userMappingData != null && userMappingData.size() > 0 && itemMappingData != null
+					&& itemMappingData.size() > 0) {
 				BiMap<Integer, String> userMappingInverse = userMappingData.inverse();
 				BiMap<Integer, String> itemMappingInverse = itemMappingData.inverse();
 				while (recommendedEntryIter.hasNext()) {

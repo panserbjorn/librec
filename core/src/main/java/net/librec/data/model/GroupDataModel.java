@@ -209,6 +209,18 @@ public abstract class GroupDataModel extends AbstractDataModel {
             throw new LibrecException(e);
         }
 	}
+	
+	@Override
+	public void nextFold() {
+		if (this.exhaustiveGroups) {
+			trainDataSet = dataSplitter.getTrainData();
+			testDataSet = dataSplitter.getTestData();
+		} else {
+			this.makeSafeSplit(dataSplitter.getTrainData(), dataSplitter.getTestData());
+		}
+        validDataSet = dataSplitter.getValidData();
+        // generate next fold by Splitter
+	}
 
 	private void makeSafeSplit(SequentialAccessSparseMatrix trainData, SequentialAccessSparseMatrix testData) {
 		SequentialAccessSparseMatrix preferences = this.dataConvertor.getPreferenceMatrix(conf);
@@ -224,6 +236,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 				}
 			}
 			if (this.Groupassignation.containsKey(entry.row())) {
+				System.out.println("Ignored member:"+Integer.toString(entry.row())+ " item:"+Integer.toString(entry.column()));
 				train.setAtColumnPosition(entry.row(), position, 0.0D);
 			} else {
 				testData.setAtColumnPosition(entry.row(), entry.columnPosition(), 0.0D);
@@ -231,8 +244,8 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		}
 		train.reshape();
 		testData.reshape();
-		this.trainDataSet = train;
-		this.testDataSet = testData;
+		trainDataSet = train;
+		testDataSet = testData;
 	}
 
 	protected static Map<Integer, List<Double>> fromMemberToItemScores(
