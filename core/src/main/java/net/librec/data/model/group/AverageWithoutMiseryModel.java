@@ -8,15 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import jdk.internal.org.objectweb.asm.tree.analysis.Value;
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class AverageWithoutMiseryModel extends GroupDataModel {
+public class AverageWithoutMiseryModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(

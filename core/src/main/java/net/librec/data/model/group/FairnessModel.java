@@ -11,14 +11,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class FairnessModel extends GroupDataModel {
+public class FairnessModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(

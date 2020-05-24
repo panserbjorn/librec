@@ -15,14 +15,13 @@ import java.util.stream.Collectors;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class CopelandRuleModel extends GroupDataModel {
+public class CopelandRuleModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(

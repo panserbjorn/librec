@@ -8,10 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
-
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashBiMap;
@@ -22,6 +19,7 @@ import net.librec.conf.Configuration;
 import net.librec.conf.Configured;
 import net.librec.data.DataSplitter;
 import net.librec.data.convertor.TextDataConvertor;
+import net.librec.data.model.group.GroupModeling;
 import net.librec.data.splitter.GroupDataSplitter;
 import net.librec.math.structure.DataFrame;
 import net.librec.math.structure.DataSet;
@@ -38,7 +36,7 @@ import net.librec.util.ReflectionUtil;
  *         the group models
  *
  */
-public abstract class GroupDataModel extends AbstractDataModel {
+public class GroupDataModel extends AbstractDataModel {
 
 	private Map<Integer, Integer> Groupassignation;
 	private Map<Integer, List<Integer>> Groups;
@@ -46,6 +44,8 @@ public abstract class GroupDataModel extends AbstractDataModel {
 	private List<Map<Integer, String>> userStatistics;
 	private int NumberOfGroups;
 	private boolean exhaustiveGroups = false;
+	
+	private GroupModeling gp = null;
 
 	/**
 	 * Empty constructor.
@@ -56,7 +56,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 
 	public GroupDataModel(Configuration conf) {
 		this.conf = conf;
-		this.groupMapping = HashBiMap.create();
+		this.groupMapping = HashBiMap.create();		
 	}
 
 	public BiMap<String, Integer> getGroupMappingdata() {
@@ -101,6 +101,18 @@ public abstract class GroupDataModel extends AbstractDataModel {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void buildConvert() throws LibrecException {
+		if (null == gp) {
+			Class<? extends GroupModeling> groupModelingClass;
+			try {
+				groupModelingClass = (Class<? extends GroupModeling>) DriverClassUtil
+						.getClass(conf.get("group.model","addUtil"));
+			} catch (ClassNotFoundException e) {
+				throw new LibrecException(e);
+			}
+			
+			this.gp = ReflectionUtil.newInstance((Class<GroupModeling>) groupModelingClass, conf);
+
+		}
 		String[] inputDataPath = conf.get(Configured.CONF_DATA_INPUT_PATH).trim().split(":");
 		for (int i = 0; i < inputDataPath.length; i++) {
 			inputDataPath[i] = conf.get(Configured.CONF_DFS_DATA_DIR) + "/" + inputDataPath[i];
@@ -139,6 +151,14 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public GroupModeling getGroupModeling() {
+		return gp;
+	}
+
+	public void setGroupModeling(GroupModeling gp) {
+		this.gp = gp;
 	}
 
 	/**
@@ -247,29 +267,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 		trainDataSet = train;
 		testDataSet = testData;
 	}
-
-	protected static Map<Integer, List<Double>> fromMemberToItemScores(
-			Map<Integer, List<KeyValue<Integer, Double>>> groupScores) {
-		Map<Integer, List<Double>> groupScoresByItem = new HashMap<Integer, List<Double>>();
-
-		for (Entry<Integer, List<KeyValue<Integer, Double>>> member : groupScores.entrySet()) {
-			for (KeyValue<Integer, Double> rating : member.getValue()) {
-				if (!groupScoresByItem.containsKey(rating.getKey())) {
-					groupScoresByItem.put(rating.getKey(), new ArrayList<Double>());
-				}
-				groupScoresByItem.get(rating.getKey()).add(rating.getValue());
-			}
-		}
-		return groupScoresByItem;
-	}
-
-	protected static List<List<KeyValue<Integer, Double>>> fromMemberMapToList(
-			Map<Integer, List<KeyValue<Integer, Double>>> groupScores) {
-		return groupScores.entrySet().stream().map(entry -> entry.getValue()).collect(Collectors.toList());
-	}
-
-	public abstract ArrayList<KeyValue<Integer, Double>> computeGroupModel(
-			Map<Integer, List<KeyValue<Integer, Double>>> groupInidividualRatings);
+	
 
 	public Table<Integer, Integer, Double> getGroupRatings(SequentialAccessSparseMatrix targetDataset) {
 		Table<Integer, Integer, Double> groupRatings = HashBasedTable.create();
@@ -288,7 +286,7 @@ public abstract class GroupDataModel extends AbstractDataModel {
 					groupsRatings.put(member, memberRatings);
 				}
 			}
-			List<KeyValue<Integer, Double>> groupScores = computeGroupModel(groupsRatings);
+			List<KeyValue<Integer, Double>> groupScores = this.gp.computeGroupModel(groupsRatings);
 			for (KeyValue<Integer, Double> item : groupScores) {
 				groupRatings.put(group, item.getKey(), item.getValue());
 			}

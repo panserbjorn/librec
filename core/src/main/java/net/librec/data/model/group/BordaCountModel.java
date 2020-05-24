@@ -10,14 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class BordaCountModel extends GroupDataModel {
+public class BordaCountModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(

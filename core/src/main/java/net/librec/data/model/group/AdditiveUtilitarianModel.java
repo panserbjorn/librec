@@ -8,14 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class AdditiveUtilitarianModel extends GroupDataModel {
+public class AdditiveUtilitarianModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(

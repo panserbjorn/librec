@@ -12,14 +12,13 @@ import java.util.Optional;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class PluralityVotingModel extends GroupDataModel {
+public class PluralityVotingModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(

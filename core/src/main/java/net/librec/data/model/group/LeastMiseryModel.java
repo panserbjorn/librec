@@ -8,14 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import net.librec.data.model.GroupDataModel;
 import net.librec.recommender.item.KeyValue;
 
 /**
  * @author Joaqui
  *
  */
-public class LeastMiseryModel extends GroupDataModel {
+public class LeastMiseryModel extends GroupModeling {
 
 	@Override
 	public ArrayList<KeyValue<Integer, Double>> computeGroupModel(
