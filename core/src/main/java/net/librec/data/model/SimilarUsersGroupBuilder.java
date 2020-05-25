@@ -24,9 +24,6 @@ import net.librec.math.structure.SequentialAccessSparseMatrix;
 import net.librec.math.structure.SequentialSparseVector;
 import net.librec.math.structure.SymmMatrix;
 import net.librec.recommender.item.KeyValue;
-import net.librec.similarity.AbstractRecommenderSimilarity;
-import net.librec.similarity.PCCSimilarity;
-import net.librec.similarity.RecommenderSimilarity;
 
 /**
  * @author Joaqui
@@ -39,6 +36,8 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	private BiMap<String, Integer>groupMapping ;
 	
 	private Map<Integer, List<Integer>> groups;
+	
+	private List<Map<Integer, String>> groupStatistics;
 
 	/**
 	 * 
@@ -46,6 +45,7 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	public SimilarUsersGroupBuilder() {
 		this.groupMapping = HashBiMap.create();
 		this.groups = new HashMap<Integer, List<Integer>>();
+		this.groupStatistics = new ArrayList<Map<Integer,String>>();
 	}
 
 	@Override
@@ -155,6 +155,7 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 		}
 		List<Integer> copyAvailableUsers = new ArrayList<Integer>(availableUsers);
 		Collections.shuffle(copyAvailableUsers);
+		Map<Integer, String> groupStats = new HashMap<Integer, String>();
 		for (Iterator<Integer> userIterator = copyAvailableUsers.iterator(); userIterator.hasNext();) {
 			Integer user = userIterator.next(); 
 			if (!availableUsers.contains(user) ) {
@@ -174,15 +175,27 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 					}
 				}
 				if (currentGroup.size() == groupSize) {
+					double similaritiesAcumulator = 0.0;
+					for (int i = 0; i < currentGroup.size()-1; i++) {
+						for (int j = i+1 ; j < currentGroup.size(); j++) {
+							Integer thisUser = currentGroup.get(i);
+							Integer thatUser = currentGroup.get(j);
+							double sim = similarity.get(thisUser, thatUser);
+							similaritiesAcumulator+=sim;
+						}
+					}
 					int groupNumber = groups.size();
 					this.groupMapping.put(Integer.toString(groupNumber), groupNumber);
 					this.groups.put(groupNumber, currentGroup);
+					double totalNumberParis = (groupSize*(groupSize-1))/2;
+					groupStats.put(groupNumber,Double.toString(similaritiesAcumulator/totalNumberParis));
 					for (Integer member : currentGroup) {
 						availableUsers.remove(member);
 					}
 				}
 			}
 		}
+		this.groupStatistics.add(groupStats);
 	}
 
 	private boolean compatibleWithGroup(List<Integer> currentGroup, KeyValue<Integer, Double> otherUser, double similarityThreshold) {
@@ -192,59 +205,6 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 			}
 		}
 		return true;
-	}
-
-	private boolean correctGroup(int[] possibelGroup, Set<Integer> availableUsers, double similarityTreshold) {
-		List<Integer> possibleG = new ArrayList<Integer>();
-		for (int i : possibelGroup) {
-			possibleG.add(i);
-		}
-		List<int[]> pairs = getCombinations(possibleG, 2);
-		
-		for(int[] pair : pairs) {
-			int user1 = pair[0];
-			int user2 = pair[1];
-			double sim = similarity.get(user1, user2);
-			if (sim <= similarityTreshold) {
-				return false;
-			}
-		}
-		
-		return true;
-	}
-
-	private List<int[]> getCombinations(List<Integer> currentSimilarUsers, int groupSize) {
-		List<int[]> subsets = new ArrayList<>();
-
-		int[] s = new int[groupSize];                  // here we'll keep indices 
-		                                       // pointing to elements in input array
-
-		if (groupSize <= currentSimilarUsers.size()) {
-		    // first index sequence: 0, 1, 2, ...
-		    for (int i = 0; (s[i] = i) < groupSize - 1; i++);  
-		    subsets.add(getSubset(currentSimilarUsers, s));
-		    for(;;) {
-		        int i;
-		        // find position of item that can be incremented
-		        for (i = groupSize - 1; i >= 0 && s[i] == currentSimilarUsers.size() - groupSize + i; i--); 
-		        if (i < 0) {
-		            break;
-		        }
-		        s[i]++;                    // increment this item
-		        for (++i; i < groupSize; i++) {    // fill up remaining items
-		            s[i] = s[i - 1] + 1; 
-		        }
-		        subsets.add(getSubset(currentSimilarUsers, s));
-		    }
-		}
-		return subsets;
-	}
-
-	private int[] getSubset(List<Integer> currentSimilarUsers, int[] s) {
-		int[] result = new int[s.length]; 
-	    for (int i = 0; i < s.length; i++) 
-	        result[i] = currentSimilarUsers.get(s[i]);
-	    return result;
 	}
 
 	private List<KeyValue<Integer, Double>> getSimilarUsers(Integer user, double similarityThreshold) {
@@ -278,6 +238,11 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	@Override
 	public BiMap<String, Integer> getGroupMapping() {
 		return this.groupMapping;
+	}
+	
+	@Override
+	public List<Map<Integer, String>> getGroupStatistics() {
+		return this.groupStatistics;
 	}
 
 }

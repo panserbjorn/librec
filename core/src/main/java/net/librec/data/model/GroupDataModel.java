@@ -42,6 +42,7 @@ public class GroupDataModel extends AbstractDataModel {
 	private Map<Integer, List<Integer>> Groups;
 	private BiMap<String, Integer> groupMapping;
 	private List<Map<Integer, String>> userStatistics;
+	private List<Map<Integer, String>> groupStatistics;
 	private int NumberOfGroups;
 	private boolean exhaustiveGroups = false;
 	
@@ -67,6 +68,8 @@ public class GroupDataModel extends AbstractDataModel {
 		Map<Integer, Integer> groupAssignation = this.getGroupAssignation();
 		BiMap<String, Integer> userMapping = this.getUserMappingData();
 		BiMap<String, Integer> groupMapping = this.getGroupMappingdata();
+		String groupDataPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/groupInfo"
+				+ Integer.toString(NumberOfGroups) + ".csv";
 		String outputPath = conf.get("dfs.result.dir") + "/" + conf.get("data.input.path") + "/groupAssignation"
 				+ Integer.toString(NumberOfGroups) + ".csv";
 		System.out.println("Result path is " + outputPath);
@@ -90,9 +93,27 @@ public class GroupDataModel extends AbstractDataModel {
 			sb.append(numRatings).append("\n");
 		}
 		String resultData = sb.toString();
+		
+		StringBuilder groupSB = new StringBuilder();
+		for (Integer group : this.Groups.keySet()) {
+			String groupName = inverseGroupMapping.get(group);
+			Integer groupSize = this.Groups.get(group).size();
+			StringJoiner joiner = new StringJoiner(",");
+			for (Map<Integer,String> stat : this.groupStatistics) {
+				joiner.add(stat.get(group)); 	
+			}
+			groupSB.append(groupName).append(",").append(groupSize);
+			if (!joiner.toString().isEmpty()) {
+				groupSB.append(",").append(joiner.toString());
+			}
+			groupSB.append("\n");
+		}
+		
+		String groupResultData = groupSB.toString();
 		// save resultData
 		try {
 			FileUtil.writeString(outputPath, resultData);
+			FileUtil.writeString(groupDataPath, groupResultData);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -138,6 +159,7 @@ public class GroupDataModel extends AbstractDataModel {
 			this.groupMapping = groupBuilder.getGroupMapping();
 			this.Groups = groupBuilder.getGroups();
 			this.userStatistics = groupBuilder.getMemberStatistics();
+			this.groupStatistics = groupBuilder.getGroupStatistics();
 			this.Groupassignation = groupBuilder.getAssignation();
 			this.NumberOfGroups= Groups.size();
 			this.exhaustiveGroups = groupBuilder.isExhaustive();

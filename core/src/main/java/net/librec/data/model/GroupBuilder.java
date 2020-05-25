@@ -47,6 +47,10 @@ public abstract class GroupBuilder implements Configurable {
 	public List<Map<Integer, String>> getMemberStatistics() {
 		return new ArrayList<Map<Integer, String>>();
 	}
+	
+	public List<Map<Integer, String>> getGroupStatistics(){
+		return new ArrayList<Map<Integer, String>>();
+	}
 
 	public GroupBuilder() {
 	}

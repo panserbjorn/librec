@@ -132,7 +132,7 @@ public class GroupRecommender extends AbstractRecommender {
 		}
 	}
 
-	private RecommendedList buildGroupRecommendations(RecommendedList individualRecomm) {
+	public RecommendedList buildGroupRecommendations(RecommendedList individualRecomm) {
 		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
 		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
 
@@ -173,7 +173,7 @@ public class GroupRecommender extends AbstractRecommender {
 				}
 			}
 
-			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel())
+			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel()).getGroupModeling()
 					.computeGroupModel(singleGroupRatings);
 			groupScore.sort(Map.Entry.comparingByKey());
 			Map<Integer, Double> groupScoreMap = new HashMap<Integer, Double>();
