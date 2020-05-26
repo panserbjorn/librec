@@ -70,6 +70,7 @@ public class RandomGroupBuilder extends GroupBuilder {
 			groupStats.put(groupIndex,Double.toString(similaritiesAcumulator/totalNumberParis));
 			groups.put(groupIndex, groupMembers);
 		}	
+		this.groupStatistics.add(groupStats);
 	}
 
 	@Override
