@@ -193,14 +193,19 @@ public class GroupRecommender extends AbstractRecommender {
 			return recommendedList;
 		} else {
 			RecommendedList recommendedList = new RecommendedList(individualRecomm.size());
-
+			System.out.println(individualRecomm.size());
 			for (int i = 0; i < individualRecomm.size(); i++) {
 				ArrayList<KeyValue<Integer, Double>> scores = new ArrayList<KeyValue<Integer, Double>>();
 				Set<Integer> keySetByContext = individualRecomm.getKeySetByContext(i);
 				for (Integer item : keySetByContext) {
 					Integer groupBelonging = groupAssignation.get(i);
-					Double score = groupsAggregationsMap.get(groupBelonging).get(item);
-					scores.add(new KeyValue<Integer, Double>(item, score));
+					if (groupBelonging != null) {
+						Double score = groupsAggregationsMap.get(groupBelonging).get(item);
+						if (null == score) {
+							score = -1.0;
+						}
+						scores.add(new KeyValue<Integer, Double>(item, score));
+					}
 				}
 				scores.sort(Map.Entry.comparingByKey());
 				recommendedList.addList(scores);
@@ -208,6 +213,14 @@ public class GroupRecommender extends AbstractRecommender {
 			return recommendedList;
 		}
 
+	}
+
+	public RecommendedList getBaseRating(DataSet predictDataSet) throws LibrecException {
+		return this.baseRecommender.recommendRating(predictDataSet);
+	}
+
+	public RecommendedList getBaseRanking() throws LibrecException {
+		return this.baseRecommender.recommendRank();
 	}
 
 	@Override
