@@ -142,37 +142,39 @@ public class GroupDataModel extends AbstractDataModel {
 		dataConvertor = new TextDataConvertor(dataColumnFormat, inputDataPath, conf.get("data.convert.sep", "[\t;, ]"));
 		try {
 			dataConvertor.processData();
-			DataFrame rawData = dataConvertor.getMatrix();
-			SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
-			
-			Class<? extends GroupBuilder> builderLCass;
-			try {
-				builderLCass = (Class<? extends GroupBuilder>) DriverClassUtil
-						.getClass(conf.get("group.builder","kmeans"));
-			} catch (ClassNotFoundException e) {
-				throw new LibrecException(e);
-			}
-			
-			GroupBuilder groupBuilder = ReflectionUtil.newInstance((Class<GroupBuilder>) builderLCass, conf);
-			groupBuilder.setUp(rawData, preferenceMatrix);
-			groupBuilder.generateGroups();
-			this.groupMapping = groupBuilder.getGroupMapping();
-			this.Groups = groupBuilder.getGroups();
-			this.userStatistics = groupBuilder.getMemberStatistics();
-			this.groupStatistics = groupBuilder.getGroupStatistics();
-			this.Groupassignation = groupBuilder.getAssignation();
-			this.NumberOfGroups= Groups.size();
-			this.exhaustiveGroups = groupBuilder.isExhaustive();
-			if (conf.getBoolean("group.save", false)) {
-				this.saveGroups();
-			}
-			LOG.info("Groups Built sucessfully:");
-			for (Integer group : this.Groups.keySet()) {
-				LOG.info(group.toString() + ": " + Integer.toString(this.Groups.get(group).size()));
-			}
+			this.BuildGroups();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void BuildGroups() throws LibrecException{
+		DataFrame rawData = dataConvertor.getMatrix();
+		SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
+		
+		Class<? extends GroupBuilder> builderLCass;
+		try {
+			builderLCass = (Class<? extends GroupBuilder>) DriverClassUtil
+					.getClass(conf.get("group.builder","kmeans"));
+		} catch (ClassNotFoundException e) {
+			throw new LibrecException(e);
+		}
+		
+		GroupBuilder groupBuilder = ReflectionUtil.newInstance((Class<GroupBuilder>) builderLCass, conf);
+		groupBuilder.setUp(rawData, preferenceMatrix);
+		groupBuilder.generateGroups();
+		this.groupMapping = groupBuilder.getGroupMapping();
+		this.Groups = groupBuilder.getGroups();
+		this.userStatistics = groupBuilder.getMemberStatistics();
+		this.groupStatistics = groupBuilder.getGroupStatistics();
+		this.Groupassignation = groupBuilder.getAssignation();
+		this.NumberOfGroups= Groups.size();
+		this.exhaustiveGroups = groupBuilder.isExhaustive();
+		if (conf.getBoolean("group.save", false)) {
+			this.saveGroups();
+		}
+		LOG.info("Groups Built sucessfully:");
 	}
 
 	public GroupModeling getGroupModeling() {
@@ -278,7 +280,7 @@ public class GroupDataModel extends AbstractDataModel {
 				}
 			}
 			if (this.Groupassignation.containsKey(entry.row())) {
-				System.out.println("Ignored member:"+Integer.toString(entry.row())+ " item:"+Integer.toString(entry.column()));
+//				System.out.println("Ignored member:"+Integer.toString(entry.row())+ " item:"+Integer.toString(entry.column()));
 				train.setAtColumnPosition(entry.row(), position, 0.0D);
 			} else {
 				testData.setAtColumnPosition(entry.row(), entry.columnPosition(), 0.0D);
