@@ -34,10 +34,17 @@ public class PluralityVotingModel extends GroupModeling {
 		while (rank.size() < topN) {
 			Map<Integer, Integer> voting = new HashMap<Integer, Integer>();
 			for (List<KeyValue<Integer, Double>> memberRating : groupRatingByMember) {
-				Optional<KeyValue<Integer, Double>> seek = memberRating.stream()
+				List<KeyValue<Integer,Double>> memberRatingCopy = new ArrayList<KeyValue<Integer,Double>>(memberRating); 
+				Optional<KeyValue<Integer, Double>> seek = memberRatingCopy.stream()
 						.filter(item -> !rank.contains(item.getKey())).findFirst();
 				if (seek.isPresent()) {
-					voting.compute(seek.get().getKey(), (k, v) -> (v == null) ? 1 : v + 1);
+					Integer key = seek.get().getKey();
+					if (voting.containsKey(key)) {
+						voting.put(key, voting.get(key)+1); 
+					} else {
+						voting.put(key,1);
+					}
+//					voting.compute(seek.get().getKey(), (k, v) -> (v == null) ? 1 : v + 1);
 				}
 			}
 			List<Entry<Integer, Integer>> votingResult = voting.entrySet().stream()
