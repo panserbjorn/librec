@@ -3,6 +3,7 @@
  */
 package net.librec.recommender;
 
+import java.awt.event.ItemListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,13 +13,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.nd4j.linalg.api.ops.impl.transforms.SetRange;
 
 import com.google.common.collect.BiMap;
 
 import net.librec.common.LibrecException;
 import net.librec.data.model.GroupDataModel;
 import net.librec.data.structure.AbstractBaseDataEntry;
+import net.librec.data.structure.BaseDataList;
+import net.librec.data.structure.BaseRatingDataEntry;
 import net.librec.data.structure.LibrecDataList;
 import net.librec.math.structure.DataSet;
 import net.librec.math.structure.MatrixEntry;
@@ -194,21 +202,41 @@ public class GroupRecommender extends AbstractRecommender {
 		} else {
 			RecommendedList recommendedList = new RecommendedList(individualRecomm.size());
 			System.out.println(individualRecomm.size());
-			for (int i = 0; i < individualRecomm.size(); i++) {
-				ArrayList<KeyValue<Integer, Double>> scores = new ArrayList<KeyValue<Integer, Double>>();
-				Set<Integer> keySetByContext = individualRecomm.getKeySetByContext(i);
-				for (Integer item : keySetByContext) {
+			if (!isRanking) {
+				SequentialAccessSparseMatrix testMatrix = (SequentialAccessSparseMatrix) ((GroupDataModel)this.getDataModel()).getTestDataSet();
+				for (int i = 0; i < individualRecomm.size(); i++) {
+					ArrayList<KeyValue<Integer, Double>> scores = new ArrayList<KeyValue<Integer, Double>>();
+					int[] items = testMatrix.row(i).getIndices();
 					Integer groupBelonging = groupAssignation.get(i);
 					if (groupBelonging != null) {
-						Double score = groupsAggregationsMap.get(groupBelonging).get(item);
-						if (null == score) {
-							score = -1.0;
+						for (int item : items) {
+							Double score = groupsAggregationsMap.get(groupBelonging).get(item);
+							if (null == score) {
+								score = -1.0;
+							}
+							scores.add(new KeyValue<Integer, Double>(item, score));
 						}
-						scores.add(new KeyValue<Integer, Double>(item, score));
 					}
+					scores.sort(Map.Entry.comparingByKey());
+					recommendedList.addList(scores);
 				}
-				scores.sort(Map.Entry.comparingByKey());
-				recommendedList.addList(scores);
+			} else {
+				for (int i = 0; i < individualRecomm.size(); i++) {
+					ArrayList<KeyValue<Integer, Double>> scores = new ArrayList<KeyValue<Integer, Double>>();
+					Set<Integer> keySetByContext = individualRecomm.getKeySetByContext(i);
+					for (Integer item : keySetByContext) {
+						Integer groupBelonging = groupAssignation.get(i);
+						if (groupBelonging != null) {
+							Double score = groupsAggregationsMap.get(groupBelonging).get(item);
+							if (null == score) {
+								score = -1.0;
+							}
+							scores.add(new KeyValue<Integer, Double>(item, score));
+						}
+					}
+					scores.sort(Map.Entry.comparingByKey());
+					recommendedList.addList(scores);
+				}
 			}
 			return recommendedList;
 		}
@@ -216,7 +244,41 @@ public class GroupRecommender extends AbstractRecommender {
 	}
 
 	public RecommendedList getBaseRating(DataSet predictDataSet) throws LibrecException {
-		return this.baseRecommender.recommendRating(predictDataSet);
+//		Get Individual recommendations
+		SequentialAccessSparseMatrix predictMatrix = (SequentialAccessSparseMatrix) predictDataSet;
+		SequentialAccessSparseMatrix trainMatrix = (SequentialAccessSparseMatrix) ((GroupDataModel) this.getDataModel()).getTrainDataSet();
+		Map<Integer, Integer> groupAssignation = ((GroupDataModel) this.getDataModel()).getGroupAssignation();
+		Map<Integer, List<Integer>> groups = ((GroupDataModel) this.getDataModel()).getGroups();
+		LibrecDataList<AbstractBaseDataEntry> librecDataList = new BaseDataList<>();
+//		Collect items over which the group is being tested
+		Map<Integer, Set<Integer>> groupItems = new HashMap<Integer, Set<Integer>>();
+        for (int userIdx = 0; userIdx < numUsers; ++userIdx) {
+            int[] itemIdsArray = predictMatrix.row(userIdx).getIndices();
+            Integer group = groupAssignation.get(userIdx);
+            for (int i : itemIdsArray) {
+            	if (!groupItems.containsKey(group)) {
+            		groupItems.put(group, new HashSet<Integer>());
+            	}
+            	groupItems.get(group).add(i);
+            }
+        }
+        
+        for (int userIdx = 0; userIdx < numUsers; userIdx++) {
+        	Integer group = groupAssignation.get(userIdx);
+        	if (group != null) {
+        		Set<Integer> itemsList = groupItems.get(group);
+//        		Get items in train for this user
+        		Set<Integer> setTrainItems = IntStream.of(trainMatrix.row(userIdx).getIndices()).boxed().collect(Collectors.toCollection(HashSet::new));
+//        		Remove items in train for this user and build items to predict for currrent member
+        		int[] itemArray = itemsList.stream().filter(item -> !setTrainItems.contains(item)).mapToInt(Number::intValue).toArray();
+        		AbstractBaseDataEntry baseRatingDataEntry = new BaseRatingDataEntry(userIdx, itemArray);
+        		librecDataList.addDataEntry(baseRatingDataEntry);
+        	} else {
+        		AbstractBaseDataEntry baseRatingDataEntry = new BaseRatingDataEntry(userIdx, new int[0]);
+        		librecDataList.addDataEntry(baseRatingDataEntry);
+        	}
+        }
+		return this.baseRecommender.recommendRating(librecDataList);
 	}
 
 	public RecommendedList getBaseRanking() throws LibrecException {
@@ -225,9 +287,9 @@ public class GroupRecommender extends AbstractRecommender {
 
 	@Override
 	public RecommendedList recommendRating(DataSet predictDataSet) throws LibrecException {
-//		Get Individual recommendations
-		RecommendedList individualRecomm = this.baseRecommender.recommendRating(predictDataSet);
-		return buildGroupRecommendations(individualRecomm);
+//		Get individual recommendations 
+		RecommendedList individualRecommendations = this.getBaseRating(predictDataSet);
+        return this.buildGroupRecommendations(individualRecommendations);
 	}
 
 	@Override
