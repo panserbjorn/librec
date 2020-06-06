@@ -28,9 +28,6 @@ public class CopelandRuleModel extends GroupModeling {
 			Map<Integer, List<KeyValue<Integer, Double>>> groupInidividualRatings) {
 		
 		List<List<KeyValue<Integer, Double>>> groupRatingByMember = fromMemberMapToList(groupInidividualRatings);
-		
-//		TODO Need to optimize this. The copeland Rule takes about 4 minutes in moveikLens
-//		TODO Now I know that if this is being called, the groupRatings al have the same length
 
 		BiMap<Integer, Integer> itemTemporalMap = HashBiMap.create();
 		for (List<KeyValue<Integer, Double>> memberRatings : groupRatingByMember) {
@@ -53,24 +50,39 @@ public class CopelandRuleModel extends GroupModeling {
 			List<KeyValue<Integer, Double>> sortedRatings = memeberRatings.stream().sorted(Map.Entry.comparingByValue())
 					.collect(Collectors.toList());
 			Collections.reverse(sortedRatings);
-			Set<Integer> preferredAgainst = new HashSet<Integer>(itemTemporalMap.keySet());
+			List<Integer> itemsProcessed = new ArrayList<Integer>();
 			for (KeyValue<Integer, Double> item : sortedRatings) {
-				preferredAgainst.remove(item.getKey());
-				for (Integer looser : preferredAgainst) {
-					Integer itemMapping = itemTemporalMap.get(item.getKey());
-					Integer looserMapping = itemTemporalMap.get(looser);
-					if (itemMapping < looserMapping) {
-						Integer itemPosition = itemMapping;
-						Integer looserPosition = looserMapping - (itemMapping + 1);
+				for (Integer winner : itemsProcessed) {
+					Integer looserMapping = itemTemporalMap.get(item.getKey());
+					Integer winnerMapping = itemTemporalMap.get(winner);
+					if (winnerMapping < looserMapping) {
+						Integer itemPosition = winnerMapping;
+						Integer looserPosition = looserMapping - (winnerMapping + 1);
 						itemConfrontationCount.get(itemPosition)[looserPosition]++;
 					} else {
 						Integer looserPosition = looserMapping;
-						Integer itemPosition = itemMapping - (looserMapping + 1);
-						itemConfrontationCount.get(looserPosition)[itemPosition]--;
+						Integer winnerPosition = winnerMapping - (looserMapping + 1);
+						itemConfrontationCount.get(looserPosition)[winnerPosition]--;
+					}
+				}
+				itemsProcessed.add(item.getKey());
+			}
+			List<Integer> missing = itemTemporalMap.keySet().stream().filter(item -> !itemsProcessed.contains(item)).collect(Collectors.toList());
+			for (Integer winner : itemsProcessed) {
+				for (Integer looser : missing) {
+					Integer looserMapping = itemTemporalMap.get(looser);
+					Integer winnerMapping = itemTemporalMap.get(winner);
+					if (winnerMapping < looserMapping) {
+						Integer itemPosition = winnerMapping;
+						Integer looserPosition = looserMapping - (winnerMapping + 1);
+						itemConfrontationCount.get(itemPosition)[looserPosition]++;
+					} else {
+						Integer looserPosition = looserMapping;
+						Integer winnerPosition = winnerMapping - (looserMapping + 1);
+						itemConfrontationCount.get(looserPosition)[winnerPosition]--;
 					}
 				}
 			}
-
 		}
 
 //		Compute the winning numbers
@@ -82,8 +94,10 @@ public class CopelandRuleModel extends GroupModeling {
 				Integer confrontationCount = itemConfrontationCount.get(i)[jPosition];
 				if (confrontationCount > 0) {
 					winningCount[i]++;
+					winningCount[j]--;
 				} else if (confrontationCount < 0) {
 					winningCount[j]++;
+					winningCount[i]--;
 				}
 			}
 		}
