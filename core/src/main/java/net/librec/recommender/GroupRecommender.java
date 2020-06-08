@@ -265,7 +265,7 @@ public class GroupRecommender extends AbstractRecommender {
         
         for (int userIdx = 0; userIdx < numUsers; userIdx++) {
         	Integer group = groupAssignation.get(userIdx);
-        	if (group != null) {
+        	if ((group != null) && (groupItems.get(group) != null)) {
         		Set<Integer> itemsList = groupItems.get(group);
 //        		Get items in train for this user
         		Set<Integer> setTrainItems = IntStream.of(trainMatrix.row(userIdx).getIndices()).boxed().collect(Collectors.toCollection(HashSet::new));
