@@ -117,7 +117,7 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 	}
 
 	private boolean shareMinimumItems(int[] indices, int[] indices2) {
-		int minimumItemsShared = conf.getInt("group.ludovicos.minimumItems", 5);
+		int minimumItemsShared = conf.getInt("group.similar.minimumItems", 5);
 		int shared = 0;
 		int index1 = 0;
 		int index2 = 0;
@@ -133,18 +133,20 @@ public class SimilarUsersGroupBuilder extends GroupBuilder {
 				index2++;
 				shared++;
 			}
-
+			if (shared >= minimumItemsShared) {
+				return true;
+			}
 		}
-		return shared >= minimumItemsShared;
+		return false;
 	}
 
 	@Override
 	public void generateGroups() {
-		int groupSize = conf.getInt("group.ludovicos.groupSize", 2);
+		int groupSize = conf.getInt("group.similar.groupSize", 2);
 		int numUsers = preferences.rowSize();
 		Map<Integer, List<KeyValue<Integer, Double>>> similarUserCache = new HashMap<Integer, List<KeyValue<Integer, Double>>>();
 		Set<Integer> availableUsers = new HashSet<Integer>(IntStream.range(0, numUsers).boxed().collect(Collectors.toList()));
-		double similarityThreshold = conf.getDouble("group.ludovicos.similThresh", 0.27D);
+		double similarityThreshold = conf.getDouble("group.similar.similThresh", 0.27D);
 		for (Iterator<Integer> userIterator = availableUsers.iterator();userIterator.hasNext();) {
 			Integer user = userIterator.next(); 
 			List<KeyValue<Integer, Double>> similarUsers = getSimilarUsers(user, similarityThreshold);
