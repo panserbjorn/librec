@@ -31,6 +31,8 @@ public class GroupDataRetriever extends GroupBuilder{
 	private Map<Integer, Integer> assignations;
 
 	private Map<Integer, List<Integer>> groups;
+	
+	private List<Map<Integer, String>> memberStatistics;
 
 	private BufferedReader br;
 	
@@ -47,16 +49,25 @@ public class GroupDataRetriever extends GroupBuilder{
 		this.assignations = new HashMap<Integer, Integer>();
 		this.groups = new HashMap<Integer, List<Integer>>();
 		this.groupMapping = HashBiMap.create();
+		this.memberStatistics = new ArrayList<Map<Integer,String>>();
 	}
 
 	public void process() {
 		String line = "";
 		try {
 			br = new BufferedReader(new FileReader(this.path));
+			boolean containsStatistics = false;
+			boolean firstLine = true;
 			while ((line = br.readLine()) != null) {
 				String[] splitted = line.split(",");
 				String user = splitted[0];
 				String group = splitted[1];
+				if (firstLine & splitted.length > 2) {
+					containsStatistics = true;
+					for (int i = 2; i < splitted.length; i++) {
+						this.memberStatistics.add(new HashMap<Integer, String>());
+					}
+				}
 				Integer groupMap = 0;
 				Integer userMap = DataFrame.getUserIds().get(user);
 				if (!groupMapping.containsKey(group)) {
@@ -68,6 +79,14 @@ public class GroupDataRetriever extends GroupBuilder{
 				}
 				groups.get(groupMap).add(userMap);
 				getGroupAssignation().put(userMap, groupMap);
+				
+				if (containsStatistics) {
+					for (int i = 2; i < splitted.length; i++) {
+						this.memberStatistics.get(i-2).put(userMap, splitted[i]);
+					}
+				}
+				
+				firstLine = false;
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -95,6 +114,11 @@ public class GroupDataRetriever extends GroupBuilder{
 	@Override
 	public Map<Integer, Integer> getAssignation() {
 		return this.getGroupAssignation();
+	}
+	
+	@Override
+	public List<Map<Integer, String>> getMemberStatistics() {
+		return this.memberStatistics;
 	}
 
 }
