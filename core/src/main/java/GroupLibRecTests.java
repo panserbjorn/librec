@@ -38,6 +38,7 @@ public class GroupLibRecTests {
 
 
 	public static void main(String[] args) throws LibrecException, ClassNotFoundException, IOException {
+		
 //		movielens1MRandomGroupGeneration();
 //		movielens1MSimilarGroupGeneration();
 		
@@ -79,8 +80,8 @@ public class GroupLibRecTests {
 		
 //		ratingUseCase("useCaseRatingBiasedMFThesis.properties", "videogames", ",");
 //		ratingUseCase("useCaseRatingUserKNNThesis.properties", "videogames", ",");
-		rankingUseCase("useCaseBPRThesis.properties", "videogames", ",");
-		rankingUseCase("useCaseBiasedMFRankThesis.properties", "videogames", ",");
+//		rankingUseCase("useCaseBPRThesis.properties", "videogames", ",");
+//		rankingUseCase("useCaseBiasedMFRankThesis.properties", "videogames", ",");
 		
 //		Configuration conf = new Configuration(false);
 //		conf.setStrings("dfs.result.dir", "../../../ThesisResults/clusters/similar");
@@ -148,6 +149,40 @@ public class GroupLibRecTests {
 //		});
 //		myWriter.close();
 		
+		String[] datasets = new String []{"movielens1m", "groceries", "amazon"};
+		String[] formats = new String [] {"UIRT", "UIR", "UIR"};
+		String[] separators = new String[] {"::", ",", ","};
+		Integer[] groups = new Integer[] {20, 50, 100};
+		
+		for (int i = 0 ; i < datasets.length ; i++) {
+			for (Integer groupNumber : groups) {
+				kmeansGroupGeneration(datasets[i], formats[i], groupNumber, separators[i]);
+			}
+		}
+		
+	}
+	
+	private static void kmeansGroupGeneration(String dataset, String format, Integer groups, String separator) throws LibrecException {
+		Configuration conf = new Configuration(false);
+		conf.setStrings("dfs.result.dir", "../../../ThesisResults/clusters/kmeans");
+		conf.setStrings("data.input.path", dataset);
+		conf.setStrings("dfs.data.dir", "../../../DataSets");
+		conf.setStrings("data.column.format", format);
+		conf.set("data.convert.sep", separator);
+		conf.setBoolean("group.save", true);
+		conf.set("data.convert.sep", ",");
+		conf.set("group.builder", "kmeans");
+		conf.set("data.model.splitter","ratio");
+		conf.set("data.splitter.ratio","rating");
+		conf.setDouble("data.splitter.trainset.ratio",0.8);
+		conf.set("data.model.format","addUtil");
+		
+		conf.setInt("rec.random.seed", 1);
+		
+		conf.setInt("group.number", groups);
+		GroupDataModel model = new GroupDataModel();
+		model.setConf(conf);
+		model.buildDataModel();
 	}
 	
 	private static void groceriesRandomGroupGeneration() throws LibrecException {
