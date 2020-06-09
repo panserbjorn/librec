@@ -69,7 +69,18 @@ public class GroupLibRecTests {
 //		rankingUseCase("useCaseBPRThesis.properties", "videogames", ",");
 //		rankingUseCase("useCaseBiasedMFRankThesis.properties", "videogames", ",");
 		
-		rankingUseCase("useCaseBPRThesis.properties", "groceries", ",");
+//		rankingUseCase("useCaseBPRThesis.properties", "groceries", ",");
+//		rankingUseCase("useCaseBiasedMFRankThesis.properties" , "groceries", ",");
+		
+//		ratingUseCase("useCaseRatingBiasedMFThesis.properties", "amazon", ",");
+//		ratingUseCase("useCaseRatingUserKNNThesis.properties", "amazon", ",");
+//		rankingUseCase("useCaseBPRThesis.properties", "amazon", ",");
+//		rankingUseCase("useCaseBiasedMFRankThesis.properties", "amazon", ",");
+		
+//		ratingUseCase("useCaseRatingBiasedMFThesis.properties", "videogames", ",");
+//		ratingUseCase("useCaseRatingUserKNNThesis.properties", "videogames", ",");
+		rankingUseCase("useCaseBPRThesis.properties", "videogames", ",");
+		rankingUseCase("useCaseBiasedMFRankThesis.properties", "videogames", ",");
 		
 //		Configuration conf = new Configuration(false);
 //		conf.setStrings("dfs.result.dir", "../../../ThesisResults/clusters/similar");
@@ -503,8 +514,8 @@ public class GroupLibRecTests {
 		Configuration conf = new Configuration(false);
 		conf.addResource(new Resource(confPath));
 		String [] methodList = new String[] {"addUtil", "leastM", "mostP", "multUtil", "borda", "plurality", "approval", "avgWOM", "fairness"};
-		String [] clusteringExternalFiles = new String[] {"random_2", "random_3", "random_4", "random_5", "random_6", "random_7", "random_8", "similar_2", "similar_3", "similar_4", "similar_5", "similar_6", "similar_7", "similar_8"};
-//		String [] clusteringExternalFiles = new String[] {"random_2", "random_3", "random_4", "random_5", "random_6", "random_7", "random_8", "similar_2", "similar_3", "similar_4", "similar_5", "similar_6", "similar_7"};
+//		String [] clusteringExternalFiles = new String[] {"random_2", "random_3", "random_4", "random_5", "random_6", "random_7", "random_8", "similar_2", "similar_3", "similar_4", "similar_5", "similar_6", "similar_7", "similar_8"};
+		String [] clusteringExternalFiles = new String[] {"random_2", "random_3", "random_4", "random_5", "random_6", "random_7", "random_8", "similar_2", "similar_3", "similar_4", "similar_5", "similar_6", "similar_7"};
 		
 		conf.set("data.input.path", dataset);
 		conf.set("data.convert.sep", separator);
