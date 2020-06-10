@@ -177,8 +177,8 @@ public class GroupDataModel extends AbstractDataModel {
 		LOG.info("Groups Built sucessfully:");
 	}
 
-	public GroupModeling getGroupModeling() {
-		return gp;
+	public ArrayList<KeyValue<Integer, Double>> getGroupModeling(Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings) {
+		return gp.computeGroupModel(singleGroupRatings);
 	}
 
 	public void setGroupModeling(GroupModeling gp) {
