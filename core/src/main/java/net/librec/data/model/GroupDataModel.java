@@ -38,15 +38,15 @@ import net.librec.util.ReflectionUtil;
  */
 public class GroupDataModel extends AbstractDataModel {
 
-	private Map<Integer, Integer> Groupassignation;
-	private Map<Integer, List<Integer>> Groups;
-	private BiMap<String, Integer> groupMapping;
-	private List<Map<Integer, String>> userStatistics;
-	private List<Map<Integer, String>> groupStatistics;
-	private int NumberOfGroups;
-	private boolean exhaustiveGroups = false;
+	protected Map<Integer, Integer> Groupassignation;
+	protected Map<Integer, List<Integer>> Groups;
+	protected BiMap<String, Integer> groupMapping;
+	protected List<Map<Integer, String>> userStatistics;
+	protected List<Map<Integer, String>> groupStatistics;
+	protected int NumberOfGroups;
+	protected boolean exhaustiveGroups = false;
 	
-	private GroupModeling gp = null;
+	protected GroupModeling gp = null;
 
 	/**
 	 * Empty constructor.
@@ -143,13 +143,16 @@ public class GroupDataModel extends AbstractDataModel {
 		try {
 			dataConvertor.processData();
 			this.BuildGroups();
+			if (conf.getBoolean("group.save", false)) {
+				this.saveGroups();
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void BuildGroups() throws LibrecException{
+	protected void BuildGroups() throws LibrecException{
 		DataFrame rawData = dataConvertor.getMatrix();
 		SequentialAccessSparseMatrix preferenceMatrix = dataConvertor.getPreferenceMatrix();
 		
@@ -171,13 +174,10 @@ public class GroupDataModel extends AbstractDataModel {
 		this.Groupassignation = groupBuilder.getAssignation();
 		this.NumberOfGroups= Groups.size();
 		this.exhaustiveGroups = groupBuilder.isExhaustive();
-		if (conf.getBoolean("group.save", false)) {
-			this.saveGroups();
-		}
 		LOG.info("Groups Built sucessfully:");
 	}
 
-	public ArrayList<KeyValue<Integer, Double>> getGroupModeling(Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings) {
+	public ArrayList<KeyValue<Integer, Double>> getGroupModeling(Map<Integer, List<KeyValue<Integer, Double>>> singleGroupRatings, Integer group) {
 		return gp.computeGroupModel(singleGroupRatings);
 	}
 
@@ -266,7 +266,7 @@ public class GroupDataModel extends AbstractDataModel {
         // generate next fold by Splitter
 	}
 
-	private void makeSafeSplit(SequentialAccessSparseMatrix trainData, SequentialAccessSparseMatrix testData) {
+	protected void makeSafeSplit(SequentialAccessSparseMatrix trainData, SequentialAccessSparseMatrix testData) {
 		SequentialAccessSparseMatrix preferences = this.dataConvertor.getPreferenceMatrix(conf);
 		SequentialAccessSparseMatrix train = new SequentialAccessSparseMatrix(preferences);
 		for (MatrixEntry entry : testData) {

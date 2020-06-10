@@ -181,7 +181,7 @@ public class GroupRecommender extends AbstractRecommender {
 				}
 			}
 
-			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel()).getGroupModeling(singleGroupRatings);
+			ArrayList<KeyValue<Integer, Double>> groupScore = ((GroupDataModel) this.getDataModel()).getGroupModeling(singleGroupRatings,group);
 			groupScore.sort(Map.Entry.comparingByKey());
 			Map<Integer, Double> groupScoreMap = new HashMap<Integer, Double>();
 			groupScore.forEach(kv -> groupScoreMap.put(kv.getKey(), kv.getValue()));
