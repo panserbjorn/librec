@@ -232,7 +232,8 @@ public class Kmeans extends GroupBuilder{
 			sum += Math.pow((thisList.get(i)-thatList.get(i)), 2);
 		}
 		if(thisList.size() < this.sparceMatrix.columnSize() ) {
-			sum+=Math.pow(MAX_RATING-MIN_RATING, 2)*(this.sparceMatrix.columnSize()-thisList.size());
+//			sum+=Math.pow(MAX_RATING-MIN_RATING, 2)*(this.sparceMatrix.columnSize()-thisList.size());
+			sum*=this.sparceMatrix.columnSize()/thisList.size();
 		}
 		return Math.sqrt(sum);
 	}
