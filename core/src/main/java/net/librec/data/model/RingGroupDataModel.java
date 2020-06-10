@@ -66,10 +66,13 @@ public class RingGroupDataModel extends GroupDataModel {
 			e.printStackTrace();
 		}
 	}
-
-	@Override
-	protected void BuildGroups() throws LibrecException {
-		super.BuildGroups();
+	
+	public void deleteRingData() {
+		this.ringAssignation = new HashMap<Integer, Integer>();
+		this.groupsRings = new HashMap<Integer, List<List<Integer>>>();
+	}
+	
+	public void buildRings() throws LibrecException {
 		Integer numberRings = conf.getInt("ring.number", 5);
 		Map<Integer, String> distancesString = this.userStatistics.get(0);
 		Map<Integer, Double> distances = new HashMap<Integer, Double>();
@@ -102,6 +105,14 @@ public class RingGroupDataModel extends GroupDataModel {
 		if (conf.getBoolean("rings.save", false)) {
 			this.saveRings();
 		}
+	}
+
+	@Override
+	protected void BuildGroups() throws LibrecException {
+		super.BuildGroups();
+		
+		this.buildRings();
+		
 	}
 
 	@Override
