@@ -135,6 +135,7 @@ generic=net.librec.filter.GenericRecommendedFilter
 #Group
 group=net.librec.recommender.GroupRecommender
 groupDM=net.librec.data.model.GroupDataModel
+ringDM=net.librec.data.model.RingGroupDataModel
 addUtil=net.librec.data.model.group.AdditiveUtilitarianModel
 leastM=net.librec.data.model.group.LeastMiseryModel
 mostP=net.librec.data.model.group.MostPleasureModel
