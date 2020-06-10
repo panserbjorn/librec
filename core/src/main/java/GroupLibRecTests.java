@@ -150,13 +150,123 @@ public class GroupLibRecTests {
 //		myWriter.close();
 		
 		String[] datasets = new String []{"movielens1m", "groceries", "amazon"};
-		String[] formats = new String [] {"UIRT", "UIR", "UIR"};
+		String[] formats = new String [] {"UIRT", "UIR", "UIRT"};
 		String[] separators = new String[] {"::", ",", ","};
 		Integer[] groups = new Integer[] {20, 50, 100};
 		
-		for (int i = 0 ; i < datasets.length ; i++) {
-			for (Integer groupNumber : groups) {
-				kmeansGroupGeneration(datasets[i], formats[i], groupNumber, separators[i]);
+//		for (int i = 2 ; i < datasets.length ; i++) {
+//			for (Integer groupNumber : groups) {
+//				kmeansGroupGeneration(datasets[i], formats[i], groupNumber, separators[i]);
+//			}
+//		}
+		
+		for (int i = 2 ; i < datasets.length ; i++) {
+			ratingKmeansTest("useCaseRatingBiasedMFThesis.properties", datasets[i], separators[i], formats[i]);
+		}
+		
+	}
+	
+	private static void ratingKmeansTest(String confPath, String dataset, String separator, String format) throws LibrecException, ClassNotFoundException {
+		Configuration conf = new Configuration(false);
+		conf.addResource(new Resource(confPath));
+		String [] methodList = new String[] {"addUtil", "leastM", "mostP"};
+//		String [] clusteringExternalFiles = new String[] {"random_2", "random_3", "random_4", "random_5", "random_6", "random_7", "random_8", "similar_2", "similar_3", "similar_4", "similar_5", "similar_6", "similar_7", "similar_8"};
+//		String [] clusteringExternalFiles = new String[] {"random_2", "random_3", "random_4", "random_5", "random_6", "random_7", "random_8", "similar_2", "similar_3", "similar_4", "similar_5", "similar_6", "similar_7"};
+		String [] clusteringExternalFiles = new String[] {"20", "50", "100"};
+		
+		conf.set("data.input.path", dataset);
+		conf.set("data.convert.sep", separator);
+		conf.setStrings("data.column.format", format);
+		
+		Long seed = conf.getLong("rec.random.seed");
+		if (seed != null) {
+			Randoms.seed(seed);
+		}
+		
+		for (String clustering : clusteringExternalFiles) {
+			conf.setStrings("group.external.path", "../../../ThesisResults/clusters/kmeans/"+dataset+"/groupAssignation"+clustering+".csv");
+			conf.set("group.model", "addUtil");
+			GroupDataModel gdm = new GroupDataModel();
+			gdm.setConf(conf);
+			conf.setBoolean("data.convert.read.ready", false);
+			gdm.buildDataModel();
+			
+			RecommenderContext recContext = new RecommenderContext(conf);
+
+			GroupRecommender rec = new GroupRecommender();
+			rec.setContext(recContext);
+			
+			while (gdm.hasNextFold()) {
+				gdm.nextFold();
+				recContext.setDataModel(gdm);
+
+				Class<? extends RecommenderSimilarity> similarityClass = (Class<? extends RecommenderSimilarity>) DriverClassUtil
+						.getClass(conf.get("rec.similarity.class"));
+
+				RecommenderSimilarity similarity = ReflectionUtil.newInstance(similarityClass, conf);
+				similarity.buildSimilarityMatrix(gdm);
+				recContext.setSimilarity(similarity);
+
+				rec.train(recContext);
+				
+				DataSet predictDataSet = gdm.getTestDataSet();
+				
+				RecommendedList baseRating = rec.getBaseRating(predictDataSet);
+				
+				Map<String, Long> timeMeasures = new HashMap<String, Long>();
+				
+				for (String groupMod : methodList) {
+//					Retrieve groupmodeling and set it in group model.
+					Class<? extends GroupModeling> groupModelingClass;
+					try {
+						groupModelingClass = (Class<? extends GroupModeling>) DriverClassUtil
+								.getClass(groupMod);
+					} catch (ClassNotFoundException e) {
+						throw new LibrecException(e);
+					}
+					
+					gdm.setGroupModeling(ReflectionUtil.newInstance((Class<GroupModeling>) groupModelingClass, conf));
+					
+					long startTime = System.currentTimeMillis();
+					RecommendedList groupRecommendations = rec.buildGroupRecommendations(baseRating);
+					long endTime = System.currentTimeMillis();
+					
+					timeMeasures.put(groupMod,endTime-startTime);
+					
+					EvalContext evc = new EvalContext(conf, groupRecommendations, (SequentialAccessSparseMatrix)predictDataSet);
+					
+					RecommendedList memberGroundTruth = evc.getGroundTruthList();
+					
+					String[] evalClassKeys = conf.getStrings("rec.eval.classes");
+					BiMap<Integer, String> userMap = gdm.getUserMappingData().inverse();
+						
+
+					for (String evalClass : evalClassKeys) {
+						Class<? extends RecommenderEvaluator> evaluatorClass = (Class<? extends RecommenderEvaluator>) DriverClassUtil
+								.getClass(evalClass);
+						RecommenderEvaluator eval = ReflectionUtil.newInstance(evaluatorClass, null);
+						
+						System.out.println(evalClass);
+						
+						Double membersOverallEvaluation = eval.evaluate(recContext,memberGroundTruth, groupRecommendations);
+						
+						Map<String, KeyValue<Double, Integer>> membersEvaluations = new HashMap<String, KeyValue<Double,Integer>>();
+						
+						for (int contextId = 0; contextId < groupRecommendations.size(); contextId++) {
+							RecommendedList individualGroupList = new RecommendedList(1);
+							individualGroupList.addList((ArrayList<KeyValue<Integer, Double>>) groupRecommendations.getKeyValueListByContext(contextId));
+							RecommendedList expectedGruopList = new RecommendedList(1);
+							expectedGruopList.addList((ArrayList<KeyValue<Integer, Double>>) memberGroundTruth.getKeyValueListByContext(contextId));
+							Double memberMeasure = eval.evaluate(recContext, expectedGruopList, individualGroupList);
+							membersEvaluations.put(userMap.get(contextId), new KeyValue<Double, Integer>(memberMeasure, expectedGruopList.getKeySetByContext(0).size()));
+						}
+						String fileName = groupMod+"_"+clustering+"_";
+						saveRecsysResults(fileName, conf, evalClass, membersOverallEvaluation, membersEvaluations);
+						
+					}
+				}
+				saveTimeResults(timeMeasures,clustering,conf, "rating");
+				
 			}
 		}
 		
@@ -170,12 +280,13 @@ public class GroupLibRecTests {
 		conf.setStrings("data.column.format", format);
 		conf.set("data.convert.sep", separator);
 		conf.setBoolean("group.save", true);
-		conf.set("data.convert.sep", ",");
 		conf.set("group.builder", "kmeans");
 		conf.set("data.model.splitter","ratio");
 		conf.set("data.splitter.ratio","rating");
 		conf.setDouble("data.splitter.trainset.ratio",0.8);
 		conf.set("data.model.format","addUtil");
+		
+		Randoms.seed(1);
 		
 		conf.setInt("rec.random.seed", 1);
 		
