@@ -401,7 +401,7 @@ DataSet predictDataSet = gdm.getTestDataSet();
 				}
 
 				//
-				saveTimeResults(timeMeasures, "kmeans"+clustering, conf, "rating");
+				saveTimeResults(timeMeasures, "kmeans"+clustering, conf, "ring");
 			}
 		}
 	}
@@ -923,7 +923,7 @@ DataSet predictDataSet = gdm.getTestDataSet();
 		System.out.println("Time result path is " + outputPath);
 		StringBuilder sb = new StringBuilder();
 		for (String groupMod : timeMeasures.keySet()) {
-			sb.append(groupMod).append(",").append(timeMeasures.get(groupMod).toString()).append(",").append("\n");
+			sb.append(groupMod).append(",").append(timeMeasures.get(groupMod).toString()).append("\n");
 		}
 
 		String resultData = sb.toString();
